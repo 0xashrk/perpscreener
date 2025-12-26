@@ -1,6 +1,6 @@
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::double_top::{Alert, DoubleTopDetector};
-use crate::routes::double_top::{CoinPatternStatus, SharedPatternState};
+use crate::routes::double_top::{CoinPatternStatus, PatternSnapshot, SharedPatternState};
 use crate::services::hyperliquid::HyperliquidClient;
 use std::collections::HashMap;
 use tokio::time::{interval, Duration};
@@ -175,8 +175,14 @@ impl MonitorService {
         // Sort by coin name for consistent ordering
         statuses.sort_by(|a, b| a.coin.cmp(&b.coin));
 
-        let mut state = self.shared_state.write().await;
+        let snapshot = PatternSnapshot {
+            as_of_ms: chrono::Utc::now().timestamp_millis() as u64,
+            patterns: statuses.clone(),
+        };
+
+        let mut state = self.shared_state.patterns.write().await;
         *state = statuses;
+        let _ = self.shared_state.broadcaster.send(snapshot);
     }
 
     fn log_alert(alert: &Alert) {

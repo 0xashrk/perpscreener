@@ -10,14 +10,18 @@ use utoipa_swagger_ui::SwaggerUi;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::business_logic::config::DoubleTopConfig;
-use crate::routes::double_top::{get_double_top_status, SharedPatternState, DoubleTopResponse, CoinPatternStatus};
+use crate::routes::double_top::{
+    get_double_top_status, get_double_top_stream, CoinPatternStatus, DoubleTopResponse,
+    PatternStateInner, SharedPatternState,
+};
 use crate::services::monitor::MonitorService;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
         routes::health::health,
-        routes::double_top::get_double_top_status
+        routes::double_top::get_double_top_status,
+        routes::double_top::get_double_top_stream
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -39,7 +43,11 @@ async fn main() {
         .init();
 
     // Shared state for pattern detection status
-    let pattern_state: SharedPatternState = Arc::new(RwLock::new(Vec::new()));
+    let (broadcaster, _receiver) = tokio::sync::broadcast::channel(16);
+    let pattern_state: SharedPatternState = Arc::new(PatternStateInner {
+        patterns: RwLock::new(Vec::new()),
+        broadcaster,
+    });
 
     // Start double top monitoring in background
     let coins = vec![
@@ -67,6 +75,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(routes::health::health))
         .route("/double-top", get(get_double_top_status))
+        .route("/double-top/stream", get(get_double_top_stream))
         .with_state(pattern_state)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
