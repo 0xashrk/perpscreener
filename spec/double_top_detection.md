@@ -111,6 +111,11 @@ Trigger when:
 - Ignore the current partial/forming candle to avoid false peaks/troughs
 - Poll every 60s, but only process when a new closed candle appears
 
+**Counters and Distance Checks:**
+- Track a single global candle counter across warmup and live processing.
+- Store `peak1.candle_idx` from the global counter at the moment the peak is detected.
+- Compute `candles_since = current_candle_count - peak1.candle_idx` for `max_peak_distance` so warmup candles do not auto-invalidate the first post-warmup peak.
+
 ### Continuous Monitoring Loop
 
 1. **Fetch latest 1m candles** (poll every minute, only process closed candles)

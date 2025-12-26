@@ -435,9 +435,16 @@ mod tests {
         }
     }
 
-    fn warmup_detector(detector: &mut DoubleTopDetector) {
+    fn make_config_with(max_peak_distance: usize, warmup_candles: usize) -> DoubleTopConfig {
+        let mut config = make_config();
+        config.max_peak_distance = max_peak_distance;
+        config.warmup_candles = warmup_candles;
+        config
+    }
+
+    fn warmup_detector(detector: &mut DoubleTopDetector, warmup_candles: usize) {
         // Feed some candles to warm up
-        for i in 0..20 {
+        for i in 0..warmup_candles {
             let price = 95.0 + (i as f64 * 0.1);
             detector.process_candle(&make_candle(price + 0.5, price - 0.5, price));
         }
@@ -453,9 +460,10 @@ mod tests {
     #[test]
     fn test_peak_detection() {
         let config = make_config();
+        let warmup_candles = config.warmup_candles;
         let mut detector = DoubleTopDetector::new("BTC".to_string(), config);
 
-        warmup_detector(&mut detector);
+        warmup_detector(&mut detector, warmup_candles);
 
         // Create a clear peak
         detector.process_candle(&make_candle(100.0, 98.0, 99.0));
@@ -471,5 +479,59 @@ mod tests {
             detector.state() == PatternState::PeakFound
                 || detector.state() == PatternState::TroughFound
         );
+    }
+
+    #[test]
+    fn test_peak_not_invalidated_after_warmup_with_small_max_distance() {
+        let config = make_config_with(5, 20);
+        let warmup_candles = config.warmup_candles;
+        let mut detector = DoubleTopDetector::new("BTC".to_string(), config);
+
+        warmup_detector(&mut detector, warmup_candles);
+
+        // Create a clear peak
+        detector.process_candle(&make_candle(100.0, 98.0, 99.0));
+        detector.process_candle(&make_candle(102.0, 99.0, 101.0));
+        detector.process_candle(&make_candle(105.0, 100.0, 104.0)); // Peak
+
+        // Sharp drop to trigger swing detection
+        detector.process_candle(&make_candle(103.0, 98.0, 99.0));
+        detector.process_candle(&make_candle(99.0, 96.0, 97.0));
+
+        assert_ne!(detector.state(), PatternState::Invalidated);
+        assert!(
+            detector.state() == PatternState::PeakFound
+                || detector.state() == PatternState::TroughFound
+        );
+    }
+
+    #[test]
+    fn test_peak_distance_invalidation_after_limit() {
+        let config = make_config_with(3, 20);
+        let warmup_candles = config.warmup_candles;
+        let max_peak_distance = config.max_peak_distance;
+        let mut detector = DoubleTopDetector::new("BTC".to_string(), config);
+
+        warmup_detector(&mut detector, warmup_candles);
+
+        // Create a clear peak
+        detector.process_candle(&make_candle(100.0, 98.0, 99.0));
+        detector.process_candle(&make_candle(102.0, 99.0, 101.0));
+        detector.process_candle(&make_candle(105.0, 100.0, 104.0)); // Peak
+
+        // Sharp drop to trigger swing detection
+        detector.process_candle(&make_candle(103.0, 98.0, 99.0));
+        detector.process_candle(&make_candle(99.0, 96.0, 97.0));
+
+        assert!(
+            detector.state() == PatternState::PeakFound
+                || detector.state() == PatternState::TroughFound
+        );
+
+        for _ in 0..=max_peak_distance {
+            detector.process_candle(&make_candle(104.0, 102.0, 103.0));
+        }
+
+        assert_eq!(detector.state(), PatternState::Invalidated);
     }
 }
