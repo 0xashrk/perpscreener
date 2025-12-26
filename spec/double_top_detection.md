@@ -258,19 +258,234 @@ Stronger break = more confidence in pattern
 
 ---
 
+## Implementation Phases
+
+### Phase 1: Data Layer
+- [ ] Hyperliquid candle fetching service
+- [ ] Candle data structures
+- [ ] Basic polling mechanism
+
+### Phase 2: Core Detection
+- [ ] ATR calculation
+- [ ] Swing high/low detection (real-time, no look-ahead)
+- [ ] Peak/trough identification
+
+### Phase 3: Pattern State Machine
+- [ ] State enum (WATCHING, PEAK_FOUND, TROUGH_FOUND, FORMING, CONFIRMED, INVALIDATED)
+- [ ] State transitions
+- [ ] Per-coin state tracking
+
+### Phase 4: Alerts
+- [ ] Early warning trigger
+- [ ] Confirmation trigger
+- [ ] Console logging (MVP)
+
+### Phase 5: Polish
+- [ ] Alert cooldown/dedup
+- [ ] Multiple coin support
+- [ ] Parameter configuration
+
+---
+
+## Test Cases
+
+### Test 1: Classic Double Top (Should Confirm)
+
+```
+Price
+102 |         Peak1         Peak2
+101 |          /\            /\
+100 |         /  \          /  \
+ 99 |        /    \        /    \
+ 98 |       /      \      /      \
+ 97 |      /        \    /        \
+ 96 |     /          \__/          \
+ 95 |    /          Trough          \
+ 94 |   /                            \  <-- Breakdown
+ 93 |  /                              \
+    +--0--5--10--15--20--25--30--35--40-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 0,  h: 93, l: 92, c: 93 },   // start
+  { i: 5,  h: 96, l: 95, c: 96 },   // rising
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 15, h: 98, l: 97, c: 97 },   // pullback
+  { i: 20, h: 96, l: 95, c: 96 },   // Trough
+  { i: 25, h: 99, l: 98, c: 99 },   // rising again
+  { i: 30, h: 101, l: 100, c: 100 }, // Peak 2 (within tolerance)
+  { i: 35, h: 97, l: 96, c: 96 },   // dropping
+  { i: 40, h: 95, l: 93, c: 94 },   // Breakdown below neckline (95)
+]
+```
+
+**Expected:**
+- `i=20`: State → `TROUGH_FOUND`
+- `i=28`: State → `FORMING`, Early Warning triggered
+- `i=30`: Peak 2 detected
+- `i=40`: State → `CONFIRMED`, Confirmation triggered
+
+---
+
+### Test 2: Failed Double Top - Breakout (Should Invalidate)
+
+```
+Price
+105 |                       /  <-- Breakout, not double top
+104 |                      /
+103 |                     /
+102 |         Peak1      /
+101 |          /\       /
+100 |         /  \     /
+ 99 |        /    \   /
+ 98 |       /      \ /
+ 97 |      /        X
+ 96 |     /        Trough
+    +--0--5--10--15--20--25--30-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 0,  h: 96, l: 95, c: 96 },
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 20, h: 97, l: 96, c: 96 },    // Trough
+  { i: 25, h: 100, l: 99, c: 100 },  // approaching
+  { i: 30, h: 105, l: 103, c: 105 }, // Breakout! Exceeds peak1 by > peak_fail_pct
+]
+```
+
+**Expected:**
+- `i=25`: State → `FORMING`, Early Warning triggered
+- `i=30`: State → `INVALIDATED` (price exceeded Peak 1 + peak_fail_pct)
+
+---
+
+### Test 3: No Pullback (Should Not Trigger)
+
+```
+Price
+102 |         Peak1-----Peak2  <-- No meaningful trough
+101 |          /          \
+100 |         /            \
+ 99 |        /              \
+ 98 |       /                \
+    +--0--5--10--15--20--25--30-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 0,  h: 98, l: 97, c: 98 },
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 15, h: 101, l: 100, c: 100 }, // tiny pullback (1%)
+  { i: 20, h: 102, l: 101, c: 101 }, // Peak 2
+  { i: 25, h: 99, l: 98, c: 98 },
+]
+```
+
+**Expected:**
+- Never reaches `TROUGH_FOUND` (pullback < min_pullback_pct)
+- No early warning, no confirmation
+
+---
+
+### Test 4: Peaks Too Far Apart (Should Invalidate)
+
+```
+Price
+102 |   Peak1                                    Peak2
+101 |    /\                                       /\
+100 |   /  \                                     /  \
+ 99 |  /    \___________________________________/    \
+ 98 | /                   (too long)                  \
+    +--0----10----20----30----40----50----60----70----80-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 20, h: 99, l: 98, c: 99 },    // Trough
+  // ... 50+ candles of sideways action ...
+  { i: 75, h: 101, l: 100, c: 100 }, // Peak 2 (too late)
+]
+```
+
+**Expected:**
+- `i > 10 + max_peak_distance`: State → `INVALIDATED`
+
+---
+
+### Test 5: Asymmetric Peaks (Should Not Match)
+
+```
+Price
+105 |                     Peak2  <-- Too high vs Peak 1
+104 |                      /\
+103 |                     /  \
+102 |         Peak1      /    \
+101 |          /\       /      \
+100 |         /  \     /        \
+ 99 |        /    \   /          \
+ 98 |       /      \_/            \
+ 97 |      /       Trough          \
+    +--0--5--10--15--20--25--30--35-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1 = 102
+  { i: 20, h: 98, l: 97, c: 98 },    // Trough
+  { i: 30, h: 105, l: 104, c: 104 }, // Peak 2 = 105 (diff = 2.9%, > tolerance)
+  { i: 35, h: 97, l: 96, c: 96 },    // drops below neckline
+]
+```
+
+**Expected (with peak_tolerance = 1.5%):**
+- Peaks don't match (diff 2.9% > 1.5%)
+- State → `INVALIDATED` (or reset to look for new pattern)
+- No confirmation triggered
+
+---
+
+### Test 6: Early Warning Only (Pattern Still Forming)
+
+```
+Price
+102 |         Peak1
+101 |          /\           ?  <-- Currently here
+100 |         /  \         /
+ 99 |        /    \       /
+ 98 |       /      \     /
+ 97 |      /        \   /
+ 96 |     /          \_/
+ 95 |    /          Trough
+    +--0--5--10--15--20--25--30-- Candle Index
+```
+
+**Mock Data:**
+```
+candles = [
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 20, h: 96, l: 95, c: 96 },    // Trough (6% pullback)
+  { i: 25, h: 99, l: 98, c: 99 },    // rising
+  { i: 30, h: 101, l: 100, c: 101 }, // within approach_threshold of Peak 1
+]
+```
+
+**Expected (with approach_threshold = 1%):**
+- `i=30`: State → `FORMING`
+- Early Warning triggered: "approaching previous high of 102"
+- No confirmation yet (pattern still forming)
+
+---
+
 ## Open Questions
 
 1. What coins to scan? Single coin or multiple?
 2. Notification method? (console log, webhook, telegram, etc.)
 3. How to avoid spam? (cooldown between alerts for same coin?)
-
----
-
-## Next Steps
-
-1. Implement Hyperliquid candle fetching service
-2. Implement peak/trough detection logic
-3. Implement pattern state machine
-4. Implement notification service
-5. Test on historical data
-6. Tune parameters
