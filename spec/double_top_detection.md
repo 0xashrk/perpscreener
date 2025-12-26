@@ -193,7 +193,7 @@ early_warning =
     AND trough exists
     AND pullback_pct >= min_pullback_pct (e.g., 2%)
     AND distance_to_peak_pct <= approach_threshold (e.g., 1%)
-    AND price_trending_up (close > close of N candles ago)
+    AND price_trending_up (current_close > candles[i - trend_lookback].close)
     AND current_high <= peak1_high * (1 + peak_fail_pct)
 ```
 
@@ -245,6 +245,7 @@ Stronger break = more confidence in pattern
 | `breakdown_buffer` | Buffer below neckline to confirm break | 0.2 - 0.5 * ATR |
 | `confirmation_mode` | `low` (aggressive) or `close` (conservative) | low / close |
 | `peak_fail_pct` | % above Peak 1 that invalidates pattern | 1% - 2% |
+| `trend_lookback` | Candles to check for uptrend in early warning | 3-5 |
 
 ---
 
