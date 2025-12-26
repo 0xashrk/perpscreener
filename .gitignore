@@ -1,10 +1,4 @@
 .env
-__pycache__/
-*.py[cod]
-.venv/
-venv/
+/target
 .idea/
 .vscode/
-*.egg-info/
-dist/
-build/
