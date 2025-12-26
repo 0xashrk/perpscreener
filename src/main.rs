@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::business_logic::config::DoubleTopConfig;
@@ -33,15 +34,7 @@ struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "perpscreener=info,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
+    let _log_guard = init_logging();
     // Shared state for pattern detection status
     let (broadcaster, _receiver) = tokio::sync::broadcast::channel(16);
     let pattern_state: SharedPatternState = Arc::new(PatternStateInner {
@@ -83,4 +76,24 @@ async fn main() {
     tracing::info!("Server running on http://localhost:3000");
     tracing::info!("Swagger UI: http://localhost:3000/swagger-ui");
     axum::serve(listener, app).await.unwrap();
+}
+
+fn init_logging() -> WorkerGuard {
+    let file_appender = tracing_appender::rolling::never(".", "dev.log");
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "perpscreener=info,tower_http=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(file_writer)
+                .with_ansi(false),
+        )
+        .init();
+
+    guard
 }
