@@ -1,5 +1,6 @@
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::double_top::{Alert, DoubleTopDetector};
+use crate::routes::double_top::{CoinPatternStatus, SharedPatternState};
 use crate::services::hyperliquid::HyperliquidClient;
 use std::collections::HashMap;
 use tokio::time::{interval, Duration};
@@ -12,10 +13,11 @@ pub struct MonitorService {
     detectors: HashMap<String, DoubleTopDetector>,
     config: DoubleTopConfig,
     last_candle_time: HashMap<String, u64>,
+    shared_state: SharedPatternState,
 }
 
 impl MonitorService {
-    pub fn new(coins: Vec<String>, config: DoubleTopConfig) -> Self {
+    pub fn new(coins: Vec<String>, config: DoubleTopConfig, shared_state: SharedPatternState) -> Self {
         let mut detectors = HashMap::new();
         for coin in coins {
             detectors.insert(
@@ -29,6 +31,7 @@ impl MonitorService {
             detectors,
             config,
             last_candle_time: HashMap::new(),
+            shared_state,
         }
     }
 
@@ -88,6 +91,9 @@ impl MonitorService {
             }
         }
 
+        // Update shared state after warmup
+        self.update_shared_state().await;
+
         Ok(())
     }
 
@@ -105,6 +111,9 @@ impl MonitorService {
                     tracing::error!("Error processing {}: {}", coin, e);
                 }
             }
+
+            // Update shared state after each cycle
+            self.update_shared_state().await;
         }
     }
 
@@ -147,6 +156,27 @@ impl MonitorService {
         }
 
         Ok(())
+    }
+
+    async fn update_shared_state(&self) {
+        let mut statuses = Vec::new();
+
+        for (coin, detector) in &self.detectors {
+            statuses.push(CoinPatternStatus {
+                coin: coin.clone(),
+                state: detector.state().into(),
+                peak1_price: detector.peak1_price(),
+                neckline_price: detector.neckline_price(),
+                peak2_price: detector.peak2_price(),
+                is_warmed_up: detector.is_warmed_up(),
+            });
+        }
+
+        // Sort by coin name for consistent ordering
+        statuses.sort_by(|a, b| a.coin.cmp(&b.coin));
+
+        let mut state = self.shared_state.write().await;
+        *state = statuses;
     }
 
     fn log_alert(alert: &Alert) {

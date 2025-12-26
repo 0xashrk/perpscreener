@@ -53,19 +53,6 @@ impl AtrCalculator {
         }
     }
 
-    /// Get current ATR without updating
-    pub fn current(&self) -> Option<f64> {
-        if self.values.len() >= self.period {
-            Some(self.values.iter().sum::<f64>() / self.period as f64)
-        } else {
-            None
-        }
-    }
-
-    /// Check if ATR has warmed up
-    pub fn is_ready(&self) -> bool {
-        self.values.len() >= self.period
-    }
 }
 
 /// Swing detector for real-time peak/trough identification (no look-ahead)
@@ -89,7 +76,6 @@ pub enum Trend {
 #[derive(Debug, Clone)]
 pub struct SwingPoint {
     pub price: f64,
-    pub candle_idx: usize,
     pub is_peak: bool,
 }
 
@@ -135,7 +121,6 @@ impl SwingDetector {
                 if self.swing_high - candle.low >= rev {
                     let peak = SwingPoint {
                         price: self.swing_high,
-                        candle_idx: self.swing_high_idx,
                         is_peak: true,
                     };
                     self.trend = Some(Trend::Down);
@@ -155,7 +140,6 @@ impl SwingDetector {
                 if candle.high - self.swing_low >= rev {
                     let trough = SwingPoint {
                         price: self.swing_low,
-                        candle_idx: self.swing_low_idx,
                         is_peak: false,
                     };
                     self.trend = Some(Trend::Up);
@@ -170,20 +154,6 @@ impl SwingDetector {
         None
     }
 
-    /// Get current swing high
-    pub fn current_swing_high(&self) -> f64 {
-        self.swing_high
-    }
-
-    /// Get current swing low
-    pub fn current_swing_low(&self) -> f64 {
-        self.swing_low
-    }
-
-    /// Get current trend
-    pub fn current_trend(&self) -> Option<Trend> {
-        self.trend
-    }
 }
 
 #[cfg(test)]

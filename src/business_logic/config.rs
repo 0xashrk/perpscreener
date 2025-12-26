@@ -5,8 +5,6 @@ pub struct DoubleTopConfig {
     pub warmup_candles: usize,
     /// Rolling candle window size for detection
     pub history_window: usize,
-    /// Candles on each side to confirm peak (backtest only)
-    pub peak_lookback: usize,
     /// Max candles between two peaks
     pub max_peak_distance: usize,
     /// Max % difference between peak prices
@@ -23,20 +21,10 @@ pub struct DoubleTopConfig {
     pub rev_atr: f64,
     /// Buffer below neckline in ATR units
     pub breakdown_buffer: f64,
-    /// `low` (aggressive) or `close` (conservative)
-    pub confirmation_mode: ConfirmationMode,
     /// % above Peak 1 that invalidates pattern
     pub peak_fail_pct: f64,
     /// Candles to check for uptrend in early warning
     pub trend_lookback: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConfirmationMode {
-    /// Aggressive - trigger on wick break
-    Low,
-    /// Conservative - trigger on close below neckline
-    Close,
 }
 
 impl Default for DoubleTopConfig {
@@ -44,7 +32,6 @@ impl Default for DoubleTopConfig {
         Self {
             warmup_candles: 200,
             history_window: 300,
-            peak_lookback: 10,
             max_peak_distance: 60,
             peak_tolerance: 1.5,
             min_pullback_pct: 2.0,
@@ -53,7 +40,6 @@ impl Default for DoubleTopConfig {
             atr_period: 14,
             rev_atr: 1.0,
             breakdown_buffer: 0.3,
-            confirmation_mode: ConfirmationMode::Close,
             peak_fail_pct: 1.5,
             trend_lookback: 3,
         }

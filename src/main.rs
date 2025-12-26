@@ -3,17 +3,27 @@ mod services;
 mod business_logic;
 
 use axum::{routing::get, Router};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::business_logic::config::DoubleTopConfig;
+use crate::routes::double_top::{get_double_top_status, SharedPatternState, DoubleTopResponse, CoinPatternStatus};
 use crate::services::monitor::MonitorService;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(routes::health::health),
-    components(schemas(routes::health::HealthResponse))
+    paths(
+        routes::health::health,
+        routes::double_top::get_double_top_status
+    ),
+    components(schemas(
+        routes::health::HealthResponse,
+        DoubleTopResponse,
+        CoinPatternStatus
+    ))
 )]
 struct ApiDoc;
 
@@ -28,6 +38,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Shared state for pattern detection status
+    let pattern_state: SharedPatternState = Arc::new(RwLock::new(Vec::new()));
+
     // Start double top monitoring in background
     let coins = vec![
         "BTC".to_string(),
@@ -35,9 +48,10 @@ async fn main() {
         "SOL".to_string(),
     ];
     let config = DoubleTopConfig::default();
+    let monitor_state = pattern_state.clone();
 
     tokio::spawn(async move {
-        let mut monitor = MonitorService::new(coins, config);
+        let mut monitor = MonitorService::new(coins, config, monitor_state);
 
         tracing::info!("Starting double top detection warmup...");
         if let Err(e) = monitor.warmup().await {
@@ -52,6 +66,8 @@ async fn main() {
     // Start web server
     let app = Router::new()
         .route("/health", get(routes::health::health))
+        .route("/double-top", get(get_double_top_status))
+        .with_state(pattern_state)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

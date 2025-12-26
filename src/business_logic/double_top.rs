@@ -1,4 +1,4 @@
-use crate::business_logic::config::{ConfirmationMode, DoubleTopConfig};
+use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::indicators::{AtrCalculator, SwingDetector, SwingPoint};
 use crate::services::hyperliquid::Candle;
 use std::collections::VecDeque;
@@ -119,17 +119,17 @@ impl DoubleTopDetector {
                 if swing_point.is_peak {
                     self.peak1 = Some(PeakInfo {
                         price: swing_point.price,
-                        candle_idx: swing_point.candle_idx,
+                        candle_idx: self.candle_count, // Use global counter, not swing detector's
                     });
                     self.state = PatternState::PeakFound;
                     self.trough_low = None;
                     self.peak2 = None;
                     self.early_warning_sent = false;
                     tracing::debug!(
-                        "[{}] Peak 1 found at {} (idx {})",
+                        "[{}] Peak 1 found at {} (candle {})",
                         self.coin,
                         swing_point.price,
-                        swing_point.candle_idx
+                        self.candle_count
                     );
                 }
             }
@@ -170,13 +170,13 @@ impl DoubleTopDetector {
                             if self.peaks_match(peak1.price, swing_point.price) {
                                 self.peak2 = Some(PeakInfo {
                                     price: swing_point.price,
-                                    candle_idx: swing_point.candle_idx,
+                                    candle_idx: self.candle_count,
                                 });
                                 tracing::debug!(
-                                    "[{}] Peak 2 found at {} (idx {})",
+                                    "[{}] Peak 2 found at {} (candle {})",
                                     self.coin,
                                     swing_point.price,
-                                    swing_point.candle_idx
+                                    self.candle_count
                                 );
                             }
                         }
@@ -328,17 +328,11 @@ impl DoubleTopDetector {
         let breakdown_buffer_price = self.config.breakdown_buffer * atr;
         let break_level = trough - breakdown_buffer_price;
 
-        // Check for breakdown
-        let broken = match self.config.confirmation_mode {
-            ConfirmationMode::Low => candle.low < break_level,
-            ConfirmationMode::Close => candle.close < break_level,
-        };
+        // Check for breakdown (using close price for conservative confirmation)
+        let broken = candle.close < break_level;
 
         if broken {
-            let break_price = match self.config.confirmation_mode {
-                ConfirmationMode::Low => candle.low,
-                ConfirmationMode::Close => candle.close,
-            };
+            let break_price = candle.close;
 
             tracing::info!(
                 "[{}] CONFIRMED - broke neckline {} (break level: {}, actual: {})",
@@ -367,17 +361,17 @@ impl DoubleTopDetector {
     fn reset_with_peak(&mut self, swing_point: &SwingPoint) {
         self.peak1 = Some(PeakInfo {
             price: swing_point.price,
-            candle_idx: swing_point.candle_idx,
+            candle_idx: self.candle_count,
         });
         self.state = PatternState::PeakFound;
         self.trough_low = None;
         self.peak2 = None;
         self.early_warning_sent = false;
         tracing::debug!(
-            "[{}] Reset with new Peak 1 at {} (idx {})",
+            "[{}] Reset with new Peak 1 at {} (candle {})",
             self.coin,
             swing_point.price,
-            swing_point.candle_idx
+            self.candle_count
         );
     }
 
@@ -386,14 +380,24 @@ impl DoubleTopDetector {
         self.state
     }
 
-    /// Get the coin this detector is tracking
-    pub fn coin(&self) -> &str {
-        &self.coin
-    }
-
     /// Check if detector is warmed up
     pub fn is_warmed_up(&self) -> bool {
         self.candle_count >= self.config.warmup_candles
+    }
+
+    /// Get peak 1 price if found
+    pub fn peak1_price(&self) -> Option<f64> {
+        self.peak1.as_ref().map(|p| p.price)
+    }
+
+    /// Get neckline (trough) price if found
+    pub fn neckline_price(&self) -> Option<f64> {
+        self.trough_low
+    }
+
+    /// Get peak 2 price if found
+    pub fn peak2_price(&self) -> Option<f64> {
+        self.peak2.as_ref().map(|p| p.price)
     }
 }
 
@@ -418,7 +422,6 @@ mod tests {
         DoubleTopConfig {
             warmup_candles: 20, // Small warmup for tests
             history_window: 100,
-            peak_lookback: 5,
             max_peak_distance: 50,
             peak_tolerance: 1.5,
             min_pullback_pct: 2.0,
@@ -427,7 +430,6 @@ mod tests {
             atr_period: 14,
             rev_atr: 1.0,
             breakdown_buffer: 0.3,
-            confirmation_mode: ConfirmationMode::Low,
             peak_fail_pct: 1.5,
             trend_lookback: 3,
         }
