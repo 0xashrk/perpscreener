@@ -76,7 +76,7 @@ Trigger when:
 
 Trigger when:
 1. Second peak formed at similar level to first peak (within `peak_tolerance`)
-2. Price breaks below the neckline by `breakdown_buffer`
+2. Price breaks below the neckline by `breakdown_buffer` (ATR units)
 3. Confirmation mode:
    - `low` = aggressive (immediate trigger on wick break)
    - `close` = conservative (trigger on close below neckline)
@@ -98,9 +98,22 @@ Trigger when:
 
 ## Detection Algorithm
 
+### Data Requirements
+
+**Warmup Window:**
+- ATR requires `atr_period` candles (e.g., 14) before valid calculation
+- Swing detection needs ATR, so first valid signal after `atr_period` candles
+- On startup, fetch `warmup_candles` historical candles (recommended: max(200, `atr_period + (2 * peak_lookback)`))
+- Retain rolling window of `history_window` candles in memory (`history_window >= warmup_candles + max_peak_distance`)
+
+**Candle Handling:**
+- **Only evaluate fully closed candles** (where `T <= now_ms - interval_ms`)
+- Ignore the current partial/forming candle to avoid false peaks/troughs
+- Poll every 60s, but only process when a new closed candle appears
+
 ### Continuous Monitoring Loop
 
-1. **Fetch latest 1m candles** (poll every minute)
+1. **Fetch latest 1m candles** (poll every minute, only process closed candles)
 2. **Identify confirmed peaks** - use look-ahead local maxima for backtests,
    or swing highs (ATR-based) for real-time
 3. **Track pattern state per coin:**
@@ -110,6 +123,7 @@ Trigger when:
    - `FORMING` - price approaching first peak level → **EARLY WARNING**
    - `CONFIRMED` - breakdown below neckline → **CONFIRMATION**
    - `INVALIDATED` - price exceeds Peak 1 by `peak_fail_pct` or time exceeds `max_peak_distance`
+   - While in `TROUGH_FOUND`/`FORMING`, update `trough_low` if a new lower low prints before Peak 2
 
 ### Math
 
@@ -120,9 +134,16 @@ should only be used for backtests. For live trading, use swing detection.
 
 #### Real-Time Swing Detection (No Look-Ahead)
 
+Initialize using the first two closed candles (`prev_close` is the prior close).
+
 ```
 atr = ATR(atr_period)
 rev = rev_atr * atr
+
+if trend is None:
+    trend = "up" if current_close >= prev_close else "down"
+    swing_high = current_high
+    swing_low = current_low
 
 if trend == "up":
     swing_high = max(swing_high, current_high)
@@ -160,7 +181,7 @@ is_trough(i, lookback) =
     candles[i].low < min(candles[i+1 : i+lookback+1].low)
 ```
 
-Neckline is the lowest `low` between Peak 1 and Peak 2.
+Neckline is the lowest `low` between Peak 1 and Peak 2; keep updating until Peak 2 is confirmed.
 
 #### Pullback Percentage
 
@@ -188,10 +209,13 @@ Example with `peak_tolerance = 1.5%`:
 ```
 distance_to_peak_pct = abs(peak1_high - current_close) / peak1_high * 100
 
+pattern_height_pct = (peak1_high - trough_low) / peak1_high * 100
+
 early_warning =
     peak1 exists
     AND trough exists
     AND pullback_pct >= min_pullback_pct (e.g., 2%)
+    AND pattern_height_pct >= min_pattern_height (e.g., 2%)
     AND distance_to_peak_pct <= approach_threshold (e.g., 1%)
     AND price_trending_up (current_close > candles[i - trend_lookback].close)
     AND current_high <= peak1_high * (1 + peak_fail_pct)
@@ -200,11 +224,14 @@ early_warning =
 #### Confirmation Trigger
 
 ```
-break_level = trough_low - breakdown_buffer
+// breakdown_buffer is in ATR units, convert to price
+breakdown_buffer_price = breakdown_buffer * ATR(atr_period)
+break_level = trough_low - breakdown_buffer_price
 
 confirmed =
     peak2 exists
     AND peaks_match(peak1, peak2)
+    AND pattern_height_pct >= min_pattern_height
     AND (
         (confirmation_mode == "low" AND current_low < break_level)
         OR
@@ -234,15 +261,17 @@ Stronger break = more confidence in pattern
 
 | Parameter | Description | Suggested Range |
 |-----------|-------------|-----------------|
-| `peak_lookback` | Candles on each side to confirm peak | 5-15 |
+| `warmup_candles` | Historical candles to fetch on startup | max(200, `atr_period + (2 * peak_lookback)`) |
+| `history_window` | Rolling candle window size for detection | `warmup_candles + max_peak_distance` |
+| `peak_lookback` | Candles on each side to confirm peak (backtest only) | 5-15 |
 | `max_peak_distance` | Max candles between two peaks | 20-100 |
 | `peak_tolerance` | Max % difference between peak prices | 0.5% - 3% |
 | `min_pullback_pct` | Min % drop to trough from first peak | 1% - 5% |
-| `min_pattern_height` | Min % from peaks to neckline | 2% - 5% |
+| `min_pattern_height` | Min % from peaks to neckline (validates trough depth) | 2% - 5% |
 | `approach_threshold` | % distance to Peak 1 to flag early warning | 0.5% - 2% |
 | `atr_period` | ATR window for volatility scaling | 10-20 |
 | `rev_atr` | Swing reversal size (ATR multiplier) | 0.8 - 1.2 |
-| `breakdown_buffer` | Buffer below neckline to confirm break | 0.2 - 0.5 * ATR |
+| `breakdown_buffer` | Buffer below neckline in ATR units (e.g., 0.3 = 0.3 * ATR) | 0.2 - 0.5 |
 | `confirmation_mode` | `low` (aggressive) or `close` (conservative) | low / close |
 | `peak_fail_pct` | % above Peak 1 that invalidates pattern | 1% - 2% |
 | `trend_lookback` | Candles to check for uptrend in early warning | 3-5 |
@@ -263,7 +292,9 @@ Stronger break = more confidence in pattern
 ### Phase 1: Data Layer
 - [ ] Hyperliquid candle fetching service
 - [ ] Candle data structures
-- [ ] Basic polling mechanism
+- [ ] Historical backfill (warmup_candles)
+- [ ] Rolling window management
+- [ ] Closed-candle-only processing
 
 ### Phase 2: Core Detection
 - [ ] ATR calculation
@@ -280,7 +311,13 @@ Stronger break = more confidence in pattern
 - [ ] Confirmation trigger
 - [ ] Console logging (MVP)
 
-### Phase 5: Polish
+### Phase 5: Backtest Validation
+- [ ] Run detection against historical data
+- [ ] Verify all test cases pass
+- [ ] Measure false positive/negative rates
+- [ ] Tune parameters based on results
+
+### Phase 6: Polish
 - [ ] Alert cooldown/dedup
 - [ ] Multiple coin support
 - [ ] Parameter configuration
@@ -288,6 +325,12 @@ Stronger break = more confidence in pattern
 ---
 
 ## Test Cases
+
+### Test Harness Notes
+
+- Feed candles in chronological order and evaluate on each closed candle only.
+- Ignore any candle with `T > now_ms - interval_ms`.
+- Do not emit alerts before `warmup_candles` is reached.
 
 ### Test 1: Classic Double Top (Should Confirm)
 
@@ -481,6 +524,61 @@ candles = [
 - `i=30`: State → `FORMING`
 - Early Warning triggered: "approaching previous high of 102"
 - No confirmation yet (pattern still forming)
+
+---
+
+### Test 7: Neckline Updates on Lower Low (Should Confirm Using Updated Neckline)
+
+**Mock Data:**
+```
+candles = [
+  { i: 10, h: 102, l: 100, c: 101 }, // Peak 1
+  { i: 20, h: 98, l: 97, c: 97 },    // Trough = 97
+  { i: 25, h: 99, l: 96, c: 97 },    // Lower low before Peak 2 (neckline -> 96)
+  { i: 30, h: 101, l: 100, c: 100 }, // Peak 2 (within tolerance)
+  { i: 35, h: 96, l: 95, c: 95 },    // Breakdown below updated neckline
+]
+```
+
+**Expected:**
+- Neckline updates to 96 at `i=25`
+- Confirmation triggers only after break below 96 (not 97)
+
+---
+
+### Test 8: Warmup Gating (No Alerts Before Warmup)
+
+**Mock Data:**
+```
+warmup_candles = 20
+candles = [
+  { i: 0, h: 100, l: 99, c: 99 },
+  // ... 18 more candles ...
+  { i: 19, h: 101, l: 100, c: 100 },
+  { i: 20, h: 102, l: 100, c: 101 }, // Peak 1 would be here, but warmup just completed
+]
+```
+
+**Expected:**
+- No alerts for `i < 20`
+- Detection starts at `i=20`
+
+---
+
+### Test 9: Ignore In-Progress Candle (No Premature Alert)
+
+**Mock Data:**
+```
+now_ms = 1_000_000
+interval_ms = 60_000
+candles = [
+  { i: 10, t: 880_000, T: 940_000, h: 102, l: 100, c: 101 }, // closed
+  { i: 11, t: 940_000, T: 1_000_000, h: 102, l: 101, c: 102 }, // in-progress
+]
+```
+
+**Expected:**
+- Ignore candle `i=11` for detection/alerts
 
 ---
 
