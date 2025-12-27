@@ -3,7 +3,8 @@ use std::sync::Arc;
 use anyhow::Context;
 
 use crate::models::candle::Candle;
-use crate::models::chart::{interval_ms, ChartSnapshot};
+use crate::models::chart::ChartSnapshot;
+use crate::models::interval::interval_ms;
 use crate::services::hyperliquid::HyperliquidClient;
 
 pub struct ChartService {

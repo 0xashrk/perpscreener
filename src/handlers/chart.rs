@@ -11,7 +11,8 @@ use tokio_stream::wrappers::ReceiverStream;
 use validator::Validate;
 
 use crate::errors::AppError;
-use crate::models::chart::{interval_ms, ChartSnapshot, ChartStreamQuery, SUPPORTED_INTERVALS};
+use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
+use crate::models::interval::{interval_ms, SUPPORTED_INTERVALS};
 use crate::services::chart::ChartService;
 use crate::state::AppState;
 
