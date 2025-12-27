@@ -16,3 +16,6 @@ tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
+validator = { version = "0.18", features = ["derive"] }
+thiserror = "1"
+anyhow = "1"

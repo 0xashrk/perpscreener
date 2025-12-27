@@ -1,6 +1,6 @@
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::indicators::{AtrCalculator, SwingDetector, SwingPoint};
-use crate::services::hyperliquid::Candle;
+use crate::models::candle::Candle;
 use std::collections::VecDeque;
 
 /// Pattern detection state
@@ -99,10 +99,7 @@ impl DoubleTopDetector {
             return None;
         }
 
-        let atr = match atr {
-            Some(a) => a,
-            None => return None,
-        };
+        let atr = atr?;
 
         // Check for swing points
         if let Some(swing_point) = self.swing.update(candle, atr) {
@@ -137,8 +134,7 @@ impl DoubleTopDetector {
                 if !swing_point.is_peak {
                     // Found a trough
                     if let Some(ref peak1) = self.peak1 {
-                        let pullback_pct =
-                            (peak1.price - swing_point.price) / peak1.price * 100.0;
+                        let pullback_pct = (peak1.price - swing_point.price) / peak1.price * 100.0;
 
                         if pullback_pct >= self.config.min_pullback_pct {
                             // Update trough if it's lower (neckline updates)
@@ -415,6 +411,8 @@ mod tests {
             close,
             volume: 0.0,
             num_trades: 0,
+            interval: None,
+            symbol: None,
         }
     }
 

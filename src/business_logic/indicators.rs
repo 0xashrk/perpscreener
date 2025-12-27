@@ -1,4 +1,4 @@
-use crate::services::hyperliquid::Candle;
+use crate::models::candle::Candle;
 
 /// Average True Range (ATR) calculator
 #[derive(Debug, Clone)]
@@ -52,7 +52,6 @@ impl AtrCalculator {
             Some(new_atr)
         }
     }
-
 }
 
 /// Swing detector for real-time peak/trough identification (no look-ahead)
@@ -153,7 +152,6 @@ impl SwingDetector {
 
         None
     }
-
 }
 
 #[cfg(test)]
@@ -170,6 +168,8 @@ mod tests {
             close,
             volume: 0.0,
             num_trades: 0,
+            interval: None,
+            symbol: None,
         }
     }
 

@@ -1,33 +1,47 @@
-mod routes;
-mod services;
 mod business_logic;
+mod errors;
+mod handlers;
+mod models;
+mod services;
+mod state;
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::business_logic::config::DoubleTopConfig;
-use crate::routes::double_top::{
-    get_double_top_status, get_double_top_stream, CoinPatternStatus, DoubleTopResponse,
-    PatternStateInner, SharedPatternState,
-};
+use crate::handlers::chart::get_chart_stream;
+use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
+use crate::handlers::health::health;
+use crate::models::candle::Candle;
+use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
+use crate::models::double_top::{CoinPatternStatus, DoubleTopResponse};
+use crate::models::health::HealthResponse;
+use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::monitor::MonitorService;
+use crate::services::pattern_state::{PatternStateInner, SharedPatternState};
+use crate::state::AppState;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        routes::health::health,
-        routes::double_top::get_double_top_status,
-        routes::double_top::get_double_top_stream
+        handlers::health::health,
+        handlers::double_top::get_double_top_status,
+        handlers::double_top::get_double_top_stream,
+        handlers::chart::get_chart_stream
     ),
     components(schemas(
-        routes::health::HealthResponse,
+        HealthResponse,
         DoubleTopResponse,
-        CoinPatternStatus
+        CoinPatternStatus,
+        ChartSnapshot,
+        ChartStreamQuery,
+        Candle,
+        errors::ErrorResponse
     ))
 )]
 struct ApiDoc;
@@ -41,13 +55,13 @@ async fn main() {
         patterns: RwLock::new(Vec::new()),
         broadcaster,
     });
+    let app_state = AppState {
+        pattern_state: pattern_state.clone(),
+        hyperliquid: Arc::new(HyperliquidClient::new()),
+    };
 
     // Start double top monitoring in background
-    let coins = vec![
-        "BTC".to_string(),
-        "ETH".to_string(),
-        "SOL".to_string(),
-    ];
+    let coins = vec!["BTC".to_string(), "ETH".to_string(), "SOL".to_string()];
     let config = DoubleTopConfig::default();
     let monitor_state = pattern_state.clone();
 
@@ -65,11 +79,16 @@ async fn main() {
     });
 
     // Start web server
+    let double_top_routes = Router::new()
+        .route("/", get(get_double_top_status))
+        .route("/stream", get(get_double_top_stream));
+    let chart_routes = Router::new().route("/stream", get(get_chart_stream));
+
     let app = Router::new()
-        .route("/health", get(routes::health::health))
-        .route("/double-top", get(get_double_top_status))
-        .route("/double-top/stream", get(get_double_top_stream))
-        .with_state(pattern_state)
+        .route("/health", get(health))
+        .nest("/double-top", double_top_routes)
+        .nest("/chart", chart_routes)
+        .with_state(app_state)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

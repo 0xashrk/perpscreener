@@ -1,42 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::models::candle::Candle;
 
 const HYPERLIQUID_API_URL: &str = "https://api.hyperliquid.xyz/info";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Candle {
-    /// Candle open time (epoch ms)
-    #[serde(rename = "t")]
-    pub open_time: u64,
-    /// Candle close time (epoch ms)
-    #[serde(rename = "T")]
-    pub close_time: u64,
-    /// Open price
-    #[serde(rename = "o", deserialize_with = "deserialize_string_to_f64")]
-    pub open: f64,
-    /// High price
-    #[serde(rename = "h", deserialize_with = "deserialize_string_to_f64")]
-    pub high: f64,
-    /// Low price
-    #[serde(rename = "l", deserialize_with = "deserialize_string_to_f64")]
-    pub low: f64,
-    /// Close price
-    #[serde(rename = "c", deserialize_with = "deserialize_string_to_f64")]
-    pub close: f64,
-    /// Volume
-    #[serde(rename = "v", deserialize_with = "deserialize_string_to_f64")]
-    pub volume: f64,
-    /// Number of trades
-    #[serde(rename = "n")]
-    pub num_trades: u64,
-}
-
-fn deserialize_string_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    s.parse::<f64>().map_err(serde::de::Error::custom)
-}
 
 #[derive(Debug, Serialize)]
 struct CandleRequest {
@@ -55,6 +21,7 @@ struct CandleRequestInner {
     end_time: u64,
 }
 
+#[derive(Clone)]
 pub struct HyperliquidClient {
     client: reqwest::Client,
 }

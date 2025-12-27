@@ -1,7 +1,8 @@
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::double_top::{Alert, DoubleTopDetector, PatternState};
-use crate::routes::double_top::{CoinPatternStatus, PatternSnapshot, SharedPatternState};
+use crate::models::double_top::{CoinPatternStatus, PatternSnapshot};
 use crate::services::hyperliquid::HyperliquidClient;
+use crate::services::pattern_state::SharedPatternState;
 use std::collections::HashMap;
 use tokio::time::{interval, Duration};
 
@@ -17,13 +18,14 @@ pub struct MonitorService {
 }
 
 impl MonitorService {
-    pub fn new(coins: Vec<String>, config: DoubleTopConfig, shared_state: SharedPatternState) -> Self {
+    pub fn new(
+        coins: Vec<String>,
+        config: DoubleTopConfig,
+        shared_state: SharedPatternState,
+    ) -> Self {
         let mut detectors = HashMap::new();
         for coin in coins {
-            detectors.insert(
-                coin.clone(),
-                DoubleTopDetector::new(coin, config.clone()),
-            );
+            detectors.insert(coin.clone(), DoubleTopDetector::new(coin, config.clone()));
         }
 
         Self {
@@ -145,7 +147,8 @@ impl MonitorService {
                     if let Some(alert) = detector.process_candle(candle) {
                         alerts.push(alert);
                     }
-                    self.last_candle_time.insert(coin.to_string(), candle.close_time);
+                    self.last_candle_time
+                        .insert(coin.to_string(), candle.close_time);
                 }
             }
         }
