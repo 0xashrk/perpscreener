@@ -10,11 +10,20 @@ No file should exceed 600 lines of code.
 
 ## Tech Stack
 
+### Backend (Rust)
 - **Framework:** Axum
 - **OpenAPI:** utoipa + utoipa-swagger-ui
 - **Async Runtime:** Tokio
 - **Validation:** validator crate
 - **Error Handling:** thiserror + anyhow
+
+### Frontend (TypeScript)
+- **Runtime/Package Manager:** Bun
+- **Framework:** React 18+ with TypeScript
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS
+- **State Management:** React Query (TanStack Query) for server state
+- **Location:** `frontend/` directory
 
 ---
 
@@ -49,8 +58,17 @@ Follow a layered architecture:
 
 ## Code Style
 
+### Backend (Rust)
 - Run `cargo fmt` before committing
 - Run `cargo clippy` with no warnings
 - Keep functions under 50 lines
 - Prefer `Arc<T>` for shared state
 - Use descriptive error messages
+
+### Frontend (TypeScript)
+- Use `bun` for all package management and scripts
+- Strict TypeScript (`strict: true` in tsconfig)
+- Functional components with hooks only (no class components)
+- Use named exports over default exports
+- Keep components under 100 lines; extract logic to custom hooks
+- Run `bun run lint` before committing

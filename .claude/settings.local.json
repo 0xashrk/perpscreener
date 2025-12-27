@@ -7,7 +7,12 @@
       "Bash(git fetch:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd tests for peak counter mismatch fix\n\n- test_peak_not_invalidated_after_warmup_with_small_max_distance: Verifies peaks aren''t immediately invalidated after warmup\n- test_peak_distance_invalidation_after_limit: Verifies patterns do get invalidated after max_peak_distance candles\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(bun create:*)",
+      "Bash(bun install:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx tailwindcss init:*)",
+      "Bash(bun run build:*)"
     ]
   }
 }
