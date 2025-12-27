@@ -1,0 +1,4 @@
+# Perp Screener
+- Purpose: Axum-based Rust service to monitor perpetuals and detect chart patterns (currently double top) while exposing health/swagger endpoints.
+- Tech stack: Rust 2021, axum, tokio, tracing, utoipa + swagger-ui for OpenAPI, reqwest for HTTP, chrono for time.
+- Architecture: `src/main.rs` starts tracing, spawns background monitor (`MonitorService`) warming up detectors and polling every 60s, sets up routes and Swagger UI. Routes under `src/routes` (health, double_top). Pattern logic under `src/business_logic` (config, indicators, double_top detector + tests). External/monitoring services under `src/services` (hyperliquid client, monitor runner).

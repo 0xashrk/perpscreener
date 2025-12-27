@@ -30,7 +30,10 @@ Swagger UI: http://localhost:3000/swagger-ui
 ```
 src/
 ├── main.rs              # Entry point, router setup
-├── routes/              # HTTP handlers
+├── handlers/            # HTTP handlers
 ├── services/            # External API calls, data fetching
-└── business_logic/      # Core algorithms, pattern detection
+├── business_logic/      # Core algorithms, pattern detection
+├── models/              # Request/response DTOs
+├── errors/              # AppError and error responses
+└── state.rs             # Shared application state
 ```
