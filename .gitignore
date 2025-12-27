@@ -4,3 +4,6 @@
 .vscode/
 *.log
 .claude/settings.local.json
+
+.DS_Store
+**/.DS_Store
