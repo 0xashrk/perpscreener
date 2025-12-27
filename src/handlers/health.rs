@@ -10,6 +10,7 @@ use crate::models::health::HealthResponse;
         (status = 200, description = "Health check", body = HealthResponse)
     )
 )]
+/// Health check endpoint.
 pub async fn health() -> Result<Json<HealthResponse>, AppError> {
     Ok(Json(HealthResponse {
         status: "healthy".to_string(),

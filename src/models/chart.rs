@@ -5,6 +5,7 @@ use validator::{Validate, ValidationError};
 use crate::models::candle::Candle;
 use crate::models::interval::{interval_ms, SUPPORTED_INTERVALS};
 
+/// Query parameters for chart endpoints.
 #[derive(Debug, Clone, Deserialize, Validate, ToSchema, IntoParams)]
 pub struct ChartStreamQuery {
     #[validate(length(min = 1, max = 24))]
@@ -20,6 +21,7 @@ pub struct ChartStreamQuery {
     pub limit: usize,
 }
 
+/// Candle snapshot payload for chart endpoints.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ChartSnapshot {
     pub as_of_ms: u64,
@@ -28,6 +30,7 @@ pub struct ChartSnapshot {
     pub candles: Vec<Candle>,
 }
 
+/// Validator hook for interval parameters.
 pub fn validate_interval(value: &str) -> Result<(), ValidationError> {
     if interval_ms(value).is_some() {
         return Ok(());

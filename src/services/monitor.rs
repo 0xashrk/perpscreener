@@ -18,6 +18,7 @@ pub struct MonitorService {
 }
 
 impl MonitorService {
+    /// Create a monitor service for the provided coins and config.
     pub fn new(
         coins: Vec<String>,
         config: DoubleTopConfig,

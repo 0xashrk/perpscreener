@@ -25,6 +25,7 @@ use crate::state::AppState;
         (status = 400, description = "Invalid request", body = crate::errors::ErrorResponse)
     )
 )]
+/// Stream candle snapshots over SSE.
 pub async fn get_chart_stream(
     State(state): State<AppState>,
     Query(query): Query<ChartStreamQuery>,
@@ -47,6 +48,7 @@ pub async fn get_chart_stream(
         (status = 400, description = "Invalid request", body = crate::errors::ErrorResponse)
     )
 )]
+/// Return a candle snapshot for the requested interval.
 pub async fn get_chart_snapshot(
     State(state): State<AppState>,
     Query(query): Query<ChartStreamQuery>,

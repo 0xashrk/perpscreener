@@ -3,6 +3,7 @@ use utoipa::ToSchema;
 
 use crate::business_logic::double_top::PatternState;
 
+/// Per-coin double top status payload.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct CoinPatternStatus {
     pub coin: String,
@@ -14,11 +15,13 @@ pub struct CoinPatternStatus {
     pub summary: String,
 }
 
+/// Collection of pattern statuses for polling endpoints.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct DoubleTopResponse {
     pub patterns: Vec<CoinPatternStatus>,
 }
 
+/// Snapshot payload for pattern SSE streams.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PatternSnapshot {
     pub as_of_ms: u64,

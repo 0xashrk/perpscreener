@@ -6,10 +6,12 @@ use chrono::{Datelike, Duration, Timelike, Utc};
 use crate::business_logic::vwap::compute_vwap;
 use crate::models::candle::Candle;
 use crate::models::vwap::{VwapEntry, VwapSnapshot, VwapTimeframe};
+use crate::services::candles::normalize_candles;
 use crate::services::hyperliquid::HyperliquidClient;
 
 const MAX_CANDLES: u64 = 5000;
 
+/// Service for assembling VWAP snapshots from candle data.
 pub struct VwapService {
     client: Arc<HyperliquidClient>,
 }
@@ -19,6 +21,7 @@ impl VwapService {
         Self { client }
     }
 
+    /// Fetch a VWAP snapshot for the requested timeframes.
     pub async fn fetch_snapshot(
         &self,
         coin: &str,
@@ -100,6 +103,7 @@ impl VwapService {
     }
 }
 
+/// Validate that the requested timeframes fit within the 5000-candle limit.
 pub fn ensure_timeframes_covered(
     timeframes: &[VwapTimeframe],
     interval_ms: u64,
@@ -125,6 +129,7 @@ pub fn ensure_timeframes_covered(
     Ok(())
 }
 
+/// Compute the number of candles required for the timeframe window.
 pub fn required_candles(anchor_ms: u64, now_ms: u64, interval_ms: u64) -> u64 {
     if now_ms <= anchor_ms {
         return 0;
@@ -194,17 +199,6 @@ fn filter_closed_candles(candles: &[Candle], now_ms: u64, interval_ms: u64) -> V
         .collect();
     filtered.sort_by_key(|candle| candle.close_time);
     filtered
-}
-
-fn normalize_candles(candles: &mut [Candle], coin: &str, interval: &str) {
-    for candle in candles {
-        if candle.interval.is_none() {
-            candle.interval = Some(interval.to_string());
-        }
-        if candle.symbol.is_none() {
-            candle.symbol = Some(coin.to_string());
-        }
-    }
 }
 
 #[cfg(test)]

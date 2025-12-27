@@ -21,19 +21,21 @@ struct CandleRequestInner {
     end_time: u64,
 }
 
+/// HTTP client wrapper for Hyperliquid candle endpoints.
 #[derive(Clone)]
 pub struct HyperliquidClient {
     client: reqwest::Client,
 }
 
 impl HyperliquidClient {
+    /// Create a new Hyperliquid client.
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
         }
     }
 
-    /// Fetch candles for a coin within a time range
+    /// Fetch candles for a coin within a time range.
     pub async fn fetch_candles(
         &self,
         coin: &str,
@@ -63,7 +65,7 @@ impl HyperliquidClient {
         Ok(response)
     }
 
-    /// Fetch historical candles for warmup (fetches last N minutes of 1m candles)
+    /// Fetch historical candles for warmup (last N minutes of 1m candles).
     pub async fn fetch_warmup_candles(
         &self,
         coin: &str,

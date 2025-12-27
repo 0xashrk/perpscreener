@@ -6,14 +6,17 @@ pub struct AtrCalculator {
     period: usize,
     values: Vec<f64>,
     prev_close: Option<f64>,
+    prev_atr: Option<f64>,
 }
 
 impl AtrCalculator {
+    /// Create a new ATR calculator with the given period.
     pub fn new(period: usize) -> Self {
         Self {
             period,
             values: Vec::with_capacity(period),
             prev_close: None,
+            prev_atr: None,
         }
     }
 
@@ -35,20 +38,21 @@ impl AtrCalculator {
         let tr = self.true_range(candle);
         self.prev_close = Some(candle.close);
 
-        if self.values.len() < self.period {
+        if self.prev_atr.is_none() {
             self.values.push(tr);
             if self.values.len() == self.period {
-                // Initial ATR is simple average
-                Some(self.values.iter().sum::<f64>() / self.period as f64)
+                // Initial ATR is simple average.
+                let initial_atr = self.values.iter().sum::<f64>() / self.period as f64;
+                self.prev_atr = Some(initial_atr);
+                Some(initial_atr)
             } else {
                 None
             }
         } else {
-            // Smoothed ATR: ((prev_atr * (period - 1)) + tr) / period
-            let prev_atr = self.values.iter().sum::<f64>() / self.period as f64;
+            // Wilder's ATR: ((prev_atr * (period - 1)) + tr) / period
+            let prev_atr = self.prev_atr.unwrap();
             let new_atr = (prev_atr * (self.period - 1) as f64 + tr) / self.period as f64;
-            self.values.remove(0);
-            self.values.push(tr);
+            self.prev_atr = Some(new_atr);
             Some(new_atr)
         }
     }
@@ -67,18 +71,21 @@ pub struct SwingDetector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Current trend direction inferred from swings.
 pub enum Trend {
     Up,
     Down,
 }
 
 #[derive(Debug, Clone)]
+/// Swing turning point payload.
 pub struct SwingPoint {
     pub price: f64,
     pub is_peak: bool,
 }
 
 impl SwingDetector {
+    /// Create a new swing detector with the given ATR multiplier.
     pub fn new(rev_atr_mult: f64) -> Self {
         Self {
             rev_atr_mult,
@@ -185,6 +192,22 @@ mod tests {
         // Initial ATR = (4 + 5 + 3) / 3 = 4
         assert!(result.is_some());
         assert!((result.unwrap() - 4.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_atr_smoothing_uses_previous_atr() {
+        let mut atr = AtrCalculator::new(3);
+
+        let trs = [4.0, 5.0, 3.0, 6.0, 1.0];
+        let mut last_atr = None;
+        for tr in trs {
+            let candle = make_candle(100.0 + tr / 2.0, 100.0 - tr / 2.0, 100.0);
+            last_atr = atr.update(&candle);
+        }
+
+        let expected = 31.0 / 9.0;
+        let actual = last_atr.unwrap();
+        assert!((actual - expected).abs() < 0.01);
     }
 
     #[test]

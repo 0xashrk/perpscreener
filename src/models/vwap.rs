@@ -4,8 +4,10 @@ use validator::{Validate, ValidationError};
 
 use crate::models::interval::{interval_ms, SUPPORTED_INTERVALS};
 
+/// Supported VWAP timeframes accepted by the API.
 pub const SUPPORTED_TIMEFRAMES: [&str; 5] = ["session", "4h", "1h", "weekly", "monthly"];
 
+/// Query parameters for VWAP streaming endpoints.
 #[derive(Debug, Clone, Deserialize, Validate, ToSchema, IntoParams)]
 pub struct VwapStreamQuery {
     #[param(example = "BTC")]
@@ -24,6 +26,7 @@ pub struct VwapStreamQuery {
     pub interval: Option<String>,
 }
 
+/// VWAP snapshot payload for SSE streaming.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct VwapSnapshot {
     pub as_of_ms: u64,
@@ -34,6 +37,7 @@ pub struct VwapSnapshot {
     pub signals: Option<Vec<VwapSignal>>,
 }
 
+/// VWAP entry for a single timeframe.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct VwapEntry {
     pub timeframe: String,
@@ -52,6 +56,7 @@ pub struct VwapEntry {
     pub lower_band_2: Option<f64>,
 }
 
+/// VWAP signal entry for the UI.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct VwapSignal {
     #[serde(rename = "type")]
@@ -62,6 +67,7 @@ pub struct VwapSignal {
     pub band: Option<String>,
 }
 
+/// VWAP timeframe selections.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VwapTimeframe {
     Session,
@@ -72,6 +78,7 @@ pub enum VwapTimeframe {
 }
 
 impl VwapTimeframe {
+    /// Convert the timeframe to its API string.
     pub fn as_str(&self) -> &'static str {
         match self {
             VwapTimeframe::Session => "session",
@@ -82,6 +89,7 @@ impl VwapTimeframe {
         }
     }
 
+    /// Parse a timeframe string into a VwapTimeframe.
     pub fn parse(input: &str) -> Option<Self> {
         match input {
             "session" => Some(VwapTimeframe::Session),
@@ -94,6 +102,7 @@ impl VwapTimeframe {
     }
 }
 
+/// Parse a comma-separated timeframe list.
 pub fn parse_timeframes(input: &str) -> Result<Vec<VwapTimeframe>, String> {
     let mut result = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -117,6 +126,7 @@ pub fn parse_timeframes(input: &str) -> Result<Vec<VwapTimeframe>, String> {
     Ok(result)
 }
 
+/// Default timeframe selection for VWAP streaming.
 pub fn default_timeframes() -> String {
     "session,4h".to_string()
 }
@@ -132,6 +142,7 @@ fn invalid_timeframe_message() -> String {
     )
 }
 
+/// Validator hook for comma-separated timeframe inputs.
 pub fn validate_timeframes(value: &str) -> Result<(), ValidationError> {
     parse_timeframes(value).map(|_| ()).map_err(|message| {
         let mut error = ValidationError::new("unsupported_timeframe");
@@ -140,7 +151,8 @@ pub fn validate_timeframes(value: &str) -> Result<(), ValidationError> {
     })
 }
 
-pub fn validate_interval_opt(interval: &String) -> Result<(), ValidationError> {
+/// Validator hook for optional interval selections.
+pub fn validate_interval_opt(interval: &str) -> Result<(), ValidationError> {
     if interval_ms(interval).is_some() {
         Ok(())
     } else {

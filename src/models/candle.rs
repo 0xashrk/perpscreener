@@ -1,6 +1,9 @@
+use serde::de::{self, Visitor};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use std::fmt;
 
+/// Candle payload from Hyperliquid.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Candle {
     /// Candle open time (epoch ms)
@@ -47,8 +50,52 @@ pub struct Candle {
 
 fn deserialize_string_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: de::Deserializer<'de>,
 {
-    let s: String = Deserialize::deserialize(deserializer)?;
-    s.parse::<f64>().map_err(serde::de::Error::custom)
+    struct StringOrNumber;
+
+    impl<'de> Visitor<'de> for StringOrNumber {
+        type Value = f64;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a string or number")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<f64, E>
+        where
+            E: de::Error,
+        {
+            value.parse::<f64>().map_err(E::custom)
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<f64, E>
+        where
+            E: de::Error,
+        {
+            self.visit_str(&value)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<f64, E>
+        where
+            E: de::Error,
+        {
+            Ok(value)
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<f64, E>
+        where
+            E: de::Error,
+        {
+            Ok(value as f64)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<f64, E>
+        where
+            E: de::Error,
+        {
+            Ok(value as f64)
+        }
+    }
+
+    deserializer.deserialize_any(StringOrNumber)
 }

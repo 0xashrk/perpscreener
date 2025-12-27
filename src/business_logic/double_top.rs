@@ -61,6 +61,7 @@ pub struct DoubleTopDetector {
 }
 
 impl DoubleTopDetector {
+    /// Create a detector instance for a specific coin.
     pub fn new(coin: String, config: DoubleTopConfig) -> Self {
         let atr = AtrCalculator::new(config.atr_period);
         let swing = SwingDetector::new(config.rev_atr);

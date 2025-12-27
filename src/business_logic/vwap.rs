@@ -1,11 +1,13 @@
 use crate::models::candle::Candle;
 
+/// VWAP computation result from a candle window.
 pub struct VwapResult {
     pub vwap: f64,
     pub cumulative_volume: f64,
     pub stddev: f64,
 }
 
+/// Compute VWAP and simple dispersion metrics for a candle window.
 pub fn compute_vwap(candles: &[Candle]) -> Option<VwapResult> {
     if candles.is_empty() {
         return None;

@@ -24,6 +24,7 @@ use crate::state::AppState;
         (status = 400, description = "Invalid request", body = crate::errors::ErrorResponse)
     )
 )]
+/// Stream VWAP snapshots over SSE.
 pub async fn get_vwap_stream(
     State(state): State<AppState>,
     Query(query): Query<VwapStreamQuery>,

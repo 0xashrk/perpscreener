@@ -19,6 +19,7 @@ use crate::state::AppState;
         (status = 200, description = "Double top pattern status for all coins", body = DoubleTopResponse)
     )
 )]
+/// Return the latest double top status for all coins.
 pub async fn get_double_top_status(
     State(state): State<AppState>,
 ) -> Result<Json<DoubleTopResponse>, AppError> {
@@ -33,6 +34,7 @@ pub async fn get_double_top_status(
         (status = 200, description = "SSE stream of double top pattern snapshots", content_type = "text/event-stream")
     )
 )]
+/// Stream double top pattern snapshots over SSE.
 pub async fn get_double_top_stream(
     State(state): State<AppState>,
 ) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, AppError> {

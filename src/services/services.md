@@ -3,6 +3,7 @@
 Orchestration layer that calls external APIs and business logic.
 
 Files:
+- `candles.rs` - candle normalization helpers shared by services.
 - `chart.rs` - chart snapshot service backed by Hyperliquid candles.
 - `hyperliquid.rs` - HTTP client for the Hyperliquid info API.
 - `monitor.rs` - double top monitoring loop and state updates.

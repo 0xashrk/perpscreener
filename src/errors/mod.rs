@@ -7,11 +7,13 @@ use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 
+/// Standard error payload for API responses.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub message: String,
 }
 
+/// Application error mapping to HTTP responses.
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("validation error: {0}")]
