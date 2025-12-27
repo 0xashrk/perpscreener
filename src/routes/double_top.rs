@@ -25,6 +25,7 @@ pub struct CoinPatternStatus {
     pub neckline_price: Option<f64>,
     pub peak2_price: Option<f64>,
     pub is_warmed_up: bool,
+    pub summary: String,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]

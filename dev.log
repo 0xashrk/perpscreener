@@ -1,0 +1,10 @@
+2025-12-27T00:15:51.811606Z  INFO perpscreener: Server running on http://localhost:3000
+2025-12-27T00:15:51.811619Z  INFO perpscreener: Swagger UI: http://localhost:3000/swagger-ui
+2025-12-27T00:15:51.814004Z  INFO perpscreener: Starting double top detection warmup...
+2025-12-27T00:15:51.814026Z  INFO perpscreener::services::monitor: Warming up detector for BTC
+2025-12-27T00:15:52.203998Z  INFO perpscreener::services::monitor: Warmed up BTC with 199 candles (state: Some(Watching))
+2025-12-27T00:15:52.204022Z  INFO perpscreener::services::monitor: Warming up detector for ETH
+2025-12-27T00:15:52.730792Z  INFO perpscreener::services::monitor: Warmed up ETH with 199 candles (state: Some(Watching))
+2025-12-27T00:15:52.730870Z  INFO perpscreener::services::monitor: Warming up detector for SOL
+2025-12-27T00:15:53.343922Z  INFO perpscreener::services::monitor: Warmed up SOL with 199 candles (state: Some(Watching))
+2025-12-27T00:15:53.344024Z  INFO perpscreener: Double top detection active, monitoring every 60s

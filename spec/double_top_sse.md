@@ -43,7 +43,8 @@ Payload:
       "peak1_price": 105.0,
       "neckline_price": 98.5,
       "peak2_price": null,
-      "is_warmed_up": true
+      "is_warmed_up": true,
+      "summary": "BTC: trough at $98.50 after peak at $105.00; watching for second peak."
     }
   ]
 }
@@ -72,7 +73,8 @@ data: {"as_of_ms": 1735689600000}
   "peak1_price": 0.0,
   "neckline_price": 0.0,
   "peak2_price": 0.0,
-  "is_warmed_up": true
+  "is_warmed_up": true,
+  "summary": "Human-readable status sentence for this coin."
 }
 ```
 
@@ -99,4 +101,3 @@ data: {"as_of_ms": 1735689600000}
 
 - On internal errors, close the stream; clients reconnect.
 - Log errors server-side; do not emit partial payloads.
-

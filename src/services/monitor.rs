@@ -1,5 +1,5 @@
 use crate::business_logic::config::DoubleTopConfig;
-use crate::business_logic::double_top::{Alert, DoubleTopDetector};
+use crate::business_logic::double_top::{Alert, DoubleTopDetector, PatternState};
 use crate::routes::double_top::{CoinPatternStatus, PatternSnapshot, SharedPatternState};
 use crate::services::hyperliquid::HyperliquidClient;
 use std::collections::HashMap;
@@ -169,6 +169,13 @@ impl MonitorService {
                 neckline_price: detector.neckline_price(),
                 peak2_price: detector.peak2_price(),
                 is_warmed_up: detector.is_warmed_up(),
+                summary: build_summary(
+                    coin,
+                    detector.state(),
+                    detector.peak1_price(),
+                    detector.neckline_price(),
+                    detector.is_warmed_up(),
+                ),
             });
         }
 
@@ -213,4 +220,64 @@ impl MonitorService {
             }
         }
     }
+}
+
+fn build_summary(
+    coin: &str,
+    state: PatternState,
+    peak1_price: Option<f64>,
+    neckline_price: Option<f64>,
+    is_warmed_up: bool,
+) -> String {
+    if !is_warmed_up {
+        return format!("{coin}: warming up, collecting candles before detection.");
+    }
+
+    match state {
+        PatternState::Watching => format!("{coin}: watching for the first peak."),
+        PatternState::PeakFound => match peak1_price {
+            Some(price) => format!(
+                "{coin}: first peak found at ${}; waiting for pullback.",
+                format_price(price)
+            ),
+            None => format!("{coin}: first peak found; waiting for pullback."),
+        },
+        PatternState::TroughFound => match (peak1_price, neckline_price) {
+            (Some(peak), Some(trough)) => format!(
+                "{coin}: trough at ${} after peak at ${}; watching for second peak.",
+                format_price(trough),
+                format_price(peak)
+            ),
+            (Some(peak), None) => format!(
+                "{coin}: pullback detected after peak at ${}; watching for second peak.",
+                format_price(peak)
+            ),
+            _ => format!("{coin}: pullback detected; watching for second peak."),
+        },
+        PatternState::Forming => match peak1_price {
+            Some(price) => format!(
+                "{coin}: price is approaching the first peak near ${} (early warning).",
+                format_price(price)
+            ),
+            None => format!("{coin}: price is approaching the first peak (early warning)."),
+        },
+        PatternState::Confirmed => match neckline_price {
+            Some(trough) => format!(
+                "{coin}: double top confirmed; broke neckline near ${}.",
+                format_price(trough)
+            ),
+            None => format!("{coin}: double top confirmed."),
+        },
+        PatternState::Invalidated => match peak1_price {
+            Some(price) => format!(
+                "{coin}: pattern invalidated after peak at ${}; watching for new setup.",
+                format_price(price)
+            ),
+            None => format!("{coin}: pattern invalidated; watching for new setup."),
+        },
+    }
+}
+
+fn format_price(price: f64) -> String {
+    format!("{:.2}", price)
 }
