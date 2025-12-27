@@ -14,7 +14,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::business_logic::config::DoubleTopConfig;
-use crate::handlers::chart::get_chart_stream;
+use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
 use crate::models::candle::Candle;
@@ -32,7 +32,8 @@ use crate::state::AppState;
         handlers::health::health,
         handlers::double_top::get_double_top_status,
         handlers::double_top::get_double_top_stream,
-        handlers::chart::get_chart_stream
+        handlers::chart::get_chart_stream,
+        handlers::chart::get_chart_snapshot
     ),
     components(schemas(
         HealthResponse,
@@ -82,7 +83,9 @@ async fn main() {
     let double_top_routes = Router::new()
         .route("/", get(get_double_top_status))
         .route("/stream", get(get_double_top_stream));
-    let chart_routes = Router::new().route("/stream", get(get_chart_stream));
+    let chart_routes = Router::new()
+        .route("/", get(get_chart_snapshot))
+        .route("/stream", get(get_chart_stream));
 
     let app = Router::new()
         .route("/health", get(health))
