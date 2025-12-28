@@ -2,17 +2,16 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use axum::{
-    extract::{Query, State},
+    extract::State,
     response::sse::{Event, KeepAlive, Sse},
     Json,
 };
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use validator::Validate;
 
 use crate::errors::AppError;
 use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
-use crate::models::interval::{interval_ms, SUPPORTED_INTERVALS};
+use crate::handlers::query::ValidatedQuery;
 use crate::services::chart::ChartService;
 use crate::state::AppState;
 
@@ -28,10 +27,9 @@ use crate::state::AppState;
 /// Stream candle snapshots over SSE.
 pub async fn get_chart_stream(
     State(state): State<AppState>,
-    Query(query): Query<ChartStreamQuery>,
+    ValidatedQuery(query): ValidatedQuery<ChartStreamQuery>,
 ) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, AppError> {
-    let poll_interval_ms = validate_chart_query(&query)?;
-    let poll_interval = Duration::from_millis(poll_interval_ms);
+    let poll_interval = Duration::from_millis(query.interval.ms());
 
     let service = ChartService::new(state.hyperliquid.clone());
     let stream = chart_stream(service, query, poll_interval);
@@ -51,13 +49,11 @@ pub async fn get_chart_stream(
 /// Return a candle snapshot for the requested interval.
 pub async fn get_chart_snapshot(
     State(state): State<AppState>,
-    Query(query): Query<ChartStreamQuery>,
+    ValidatedQuery(query): ValidatedQuery<ChartStreamQuery>,
 ) -> Result<Json<ChartSnapshot>, AppError> {
-    let _ = validate_chart_query(&query)?;
-
     let service = ChartService::new(state.hyperliquid.clone());
     let snapshot = service
-        .fetch_snapshot(&query.coin, &query.interval, query.limit)
+        .fetch_snapshot(&query.coin, query.interval, query.limit)
         .await
         .map_err(|error| AppError::Upstream(error.to_string()))?;
 
@@ -103,7 +99,7 @@ async fn send_snapshot(
     tx: &mpsc::Sender<Result<Event, Infallible>>,
 ) -> Result<(), AppError> {
     let snapshot = service
-        .fetch_snapshot(&query.coin, &query.interval, query.limit)
+        .fetch_snapshot(&query.coin, query.interval, query.limit)
         .await
         .map_err(|error| AppError::Upstream(error.to_string()))?;
 
@@ -122,17 +118,4 @@ fn snapshot_event(snapshot: &ChartSnapshot) -> Result<Event, AppError> {
         .event("snapshot")
         .id(snapshot.as_of_ms.to_string())
         .data(data))
-}
-
-fn validate_chart_query(query: &ChartStreamQuery) -> Result<u64, AppError> {
-    query
-        .validate()
-        .map_err(|err| AppError::Validation(err.to_string()))?;
-
-    interval_ms(&query.interval).ok_or_else(|| {
-        AppError::Validation(format!(
-            "interval must be one of: {}",
-            SUPPORTED_INTERVALS.join(", ")
-        ))
-    })
 }

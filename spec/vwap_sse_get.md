@@ -4,8 +4,8 @@
 
 | Phase | Endpoint | Scope | Implementation Status |
 | ----- | -------- | ----- | --------------------- |
-| 1 | `GET /vwap` | Snapshot payload (same shape as SSE `snapshot` data) | TBD |
-| 2 | `GET /vwap/stream` | SSE stream of snapshots and heartbeats | TBD |
+| 1 | `GET /vwap` | Snapshot payload (same shape as SSE `snapshot` data) | Implemented |
+| 2 | `GET /vwap/stream` | SSE stream of snapshots and heartbeats | Implemented |
 
 ## Overview
 

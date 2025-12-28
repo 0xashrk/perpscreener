@@ -8,8 +8,8 @@ Rust service for streaming perp market data and pattern signals over HTTP + SSE,
 | ---- | ------ | ----- |
 | Chart candles | Implemented | Snapshot + SSE streaming |
 | Double top detection | Implemented | Background monitor + snapshot + SSE |
-| VWAP streaming | Implemented (partial) | SSE snapshots only; no heartbeat event or Last-Event-ID support |
-| VWAP snapshot (GET) | Planned | Spec tracked in `spec/vwap_sse_get.md` |
+| VWAP streaming | Implemented | SSE snapshots + heartbeat; Last-Event-ID accepted |
+| VWAP snapshot (GET) | Implemented | Same payload as SSE snapshot |
 
 ## Quickstart
 
@@ -64,6 +64,7 @@ The background monitor runs every 60 seconds and currently tracks `BTC`, `ETH`, 
 
 ### VWAP
 
+- `GET /vwap`
 - `GET /vwap/stream`
 
 Query params:
@@ -75,6 +76,7 @@ Query params:
 Notes:
 - Enforces the 5000-candle limit based on the requested timeframe and interval.
 - Current implementation emits snapshots every 60 seconds.
+- Emits `heartbeat` events if no snapshot was sent within 90 seconds.
 
 ## Data Sources
 
