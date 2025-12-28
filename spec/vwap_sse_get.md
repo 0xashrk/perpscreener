@@ -1,5 +1,12 @@
 # VWAP SSE Streaming Spec
 
+## Index
+
+| Phase | Endpoint | Scope | Implementation Status |
+| ----- | -------- | ----- | --------------------- |
+| 1 | `GET /vwap` | Snapshot payload (same shape as SSE `snapshot` data) | TBD |
+| 2 | `GET /vwap/stream` | SSE stream of snapshots and heartbeats | TBD |
+
 ## Overview
 
 Provide an SSE endpoint that streams Volume Weighted Average Price (VWAP) data for multiple timeframes. Primary focus is day trading with session-anchored VWAP, with additional timeframes for swing trading context.
@@ -32,7 +39,27 @@ Where Typical Price = `(High + Low + Close) / 3`
 
 ---
 
-## Endpoint
+## Phased Delivery
+
+- Phase 1: `GET /vwap` returns a single snapshot payload (same shape as the SSE `snapshot` event data) to unblock integration and testing.
+- Phase 2: `GET /vwap/stream` provides the SSE stream as defined in this spec.
+
+---
+
+## Snapshot Endpoint (Phase 1)
+
+**Method:** `GET /vwap`
+**Response:** `application/json`
+
+**Headers:**
+- `Content-Type: application/json`
+- `Cache-Control: no-cache`
+
+**Response Body:** Identical to the SSE `snapshot` event data payload.
+
+---
+
+## SSE Endpoint (Phase 2)
 
 **Method:** `GET /vwap/stream`
 **Response:** `text/event-stream`
@@ -44,7 +71,9 @@ Where Typical Price = `(High + Low + Close) / 3`
 
 ---
 
-## Query Parameters
+## Query Parameters (Shared)
+
+These parameters apply to both `GET /vwap` and `GET /vwap/stream`.
 
 | Name | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
@@ -220,7 +249,88 @@ Signal types:
 
 ## Test Cases
 
-### Test 1: Default Timeframes
+### Phase 1: GET Snapshot Endpoint
+
+### Test 1: Default Timeframes (GET)
+
+**Request:**
+```
+GET /vwap?coin=BTC
+```
+
+**Expected:**
+- Status `200`
+- Response body contains `session` and `4h` VWAPs
+- All band fields present
+
+---
+
+### Test 2: Custom Timeframes (GET)
+
+**Request:**
+```
+GET /vwap?coin=ETH&timeframes=session,weekly,monthly
+```
+
+**Expected:**
+- Status `200`
+- Response body contains exactly 3 VWAP entries for requested timeframes
+- Interval selection defaults to `1h` (since weekly/monthly requested)
+
+---
+
+### Test 3: Bands Disabled (GET)
+
+**Request:**
+```
+GET /vwap?coin=SOL&bands=false
+```
+
+**Expected:**
+- Status `200`
+- VWAP entries do not include band fields
+
+---
+
+### Test 4: Invalid Timeframe (GET)
+
+**Request:**
+```
+GET /vwap?coin=BTC&timeframes=session,invalid
+```
+
+**Expected:**
+- Status `400`
+- Error message lists supported timeframes
+
+---
+
+### Test 5: Candle Limit Enforcement (GET)
+
+**Setup:** Request `monthly` with `interval=1m`
+
+**Expected:**
+- Status `400`
+- Error message instructs using a larger `interval`
+
+---
+
+### Test 6: Payload Shape (GET)
+
+**Request:**
+```
+GET /vwap?coin=BTC
+```
+
+**Expected:**
+- `as_of_ms`, `coin`, `current_price`, `vwaps` present
+- Each VWAP entry includes `timeframe`, `anchor_time_ms`, `vwap`, `cumulative_volume`, `distance_pct`, `position`
+
+---
+
+### Phase 2: SSE Streaming Endpoint
+
+### Test 1: Default Timeframes (SSE)
 
 **Request:**
 ```
@@ -234,7 +344,7 @@ GET /vwap/stream?coin=BTC
 
 ---
 
-### Test 2: Custom Timeframes
+### Test 2: Custom Timeframes (SSE)
 
 **Request:**
 ```
@@ -247,7 +357,7 @@ GET /vwap/stream?coin=ETH&timeframes=session,weekly,monthly
 
 ---
 
-### Test 3: Bands Disabled
+### Test 3: Bands Disabled (SSE)
 
 **Request:**
 ```
@@ -260,7 +370,7 @@ GET /vwap/stream?coin=SOL&bands=false
 
 ---
 
-### Test 4: Invalid Timeframe
+### Test 4: Invalid Timeframe (SSE)
 
 **Request:**
 ```
@@ -273,7 +383,7 @@ GET /vwap/stream?coin=BTC&timeframes=session,invalid
 
 ---
 
-### Test 5: Session Reset at UTC Midnight
+### Test 5: Session Reset at UTC Midnight (SSE)
 
 **Setup:** Clock crosses 00:00 UTC
 
@@ -284,7 +394,7 @@ GET /vwap/stream?coin=BTC&timeframes=session,invalid
 
 ---
 
-### Test 6: Distance Calculation
+### Test 6: Distance Calculation (SSE)
 
 **Setup:** Current price = 100, Session VWAP = 98
 
@@ -294,7 +404,7 @@ GET /vwap/stream?coin=BTC&timeframes=session,invalid
 
 ---
 
-### Test 7: Rolling Window (4h)
+### Test 7: Rolling Window (4h) (SSE)
 
 **Setup:** Connect at 14:30 UTC
 
@@ -304,7 +414,7 @@ GET /vwap/stream?coin=BTC&timeframes=session,invalid
 
 ---
 
-### Test 8: Update Cadence
+### Test 8: Update Cadence (SSE)
 
 **Request:**
 ```
@@ -315,6 +425,15 @@ GET /vwap/stream?coin=BTC
 - Initial snapshot on connect
 - Next snapshot ~60 seconds later
 - Values may change as new candles close
+
+---
+
+### Test 9: Heartbeat Emission (SSE)
+
+**Setup:** No snapshot emitted within 90 seconds
+
+**Expected:**
+- `heartbeat` event is sent with `as_of_ms`
 
 ---
 
