@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Frontend-only work; backend rules live in `spec/backend_guidelines.md`.
+- Frontend-only work; backend rules live in `guidelines/backend_guidelines.md`.
 - Frontend code lives in `frontend/` at the repo root.
 
 ---
@@ -12,6 +12,7 @@
 - **Framework:** React (TypeScript, functional components)
 - **Build tool:** use existing tooling; if none, prefer Vite
 - **Testing:** React Testing Library + Vitest (or existing test stack if already present)
+- **Styling:** Tailwind CSS (utility-first, no custom CSS unless necessary)
 
 ---
 
@@ -25,7 +26,7 @@
   - `src/services/` — API/SSE clients, data access helpers
   - `src/types/` — shared TypeScript types
   - `src/utils/` — pure utilities
-  - `src/styles/` — global styles, theme tokens
+  - `src/styles/` — minimal global styles only when Tailwind cannot cover the need
 
 ---
 
@@ -47,9 +48,16 @@
 
 ## Type Safety and Validation
 
-- Avoid `any`; prefer `unknown` with narrowing.
+- Do not use `any`, `unknown`, or `undefined` in app types. Convert external input to typed shapes at the boundary.
+- Use optional props (`?`) sparingly with defaults; do not annotate values as `| undefined`.
+- Avoid `null` in app types; normalize incoming data so the app layer never handles `null`.
 - Prefer reusable, well-named types in `src/types/`.
 - Validate user input at the boundary; use existing validation tooling if present.
+
+## Modernization
+
+- For every feature change, clean up legacy code in the touched area and remove outdated patterns.
+- No backward-compatibility obligations: prefer forward-looking APIs and delete legacy shims as you go.
 
 ---
 
