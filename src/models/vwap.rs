@@ -64,12 +64,9 @@ pub struct VwapStreamQuery {
     #[param(example = "BTC")]
     #[validate(length(min = 1, max = 24))]
     pub coin: String,
+    /// Comma-separated list of: session, 1h, 4h, weekly, monthly.
     #[serde(default = "default_timeframes")]
-    #[param(
-        example = "session,4h",
-        value_type = String,
-        description = "Comma-separated list of: session, 1h, 4h, weekly, monthly."
-    )]
+    #[param(example = "session,4h", value_type = String)]
     pub timeframes: TimeframeList,
     #[serde(default = "default_bands")]
     #[param(example = true, default = true)]
