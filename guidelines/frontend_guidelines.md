@@ -10,8 +10,9 @@
 ## Tech Stack
 
 - **Framework:** React (TypeScript, functional components)
-- **Build tool:** use existing tooling; if none, prefer Vite
+- **Build tool:** use existing tooling; if none, use Bun
 - **Testing:** React Testing Library + Vitest (or existing test stack if already present)
+- **Runtime/package manager:** Bun
 - **Styling:** Tailwind CSS (utility-first, no custom CSS unless necessary)
 
 ---
