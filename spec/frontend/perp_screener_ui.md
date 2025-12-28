@@ -4,7 +4,7 @@
 
 | Phase | Scope | Implementation Status |
 | ----- | ----- | --------------------- |
-| 1 | Multi-token screener view (Double Top + VWAP summary) | Not started |
+| 1 | Multi-token screener view (Double Top + VWAP summary) | Implemented |
 | 2 | Optional token detail drawer (expanded VWAP + pattern detail) | Not started |
 
 ---
@@ -55,6 +55,13 @@ Columns (Phase 1):
 Notes:
 - Keep the table dense and sortable.
 - Use minimal color cues for state (green/red/gray).
+- Include an on-screen legend describing the Double Top state meanings:
+  - Watching: waiting for a first peak
+  - Peak Found: first peak confirmed
+  - Trough Found: pullback/neckline formed
+  - Forming: price approaching the first peak
+  - Confirmed: breakdown below neckline
+  - Invalidated: pattern failed (broke above peak or timed out)
 
 ---
 
