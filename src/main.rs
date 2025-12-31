@@ -119,6 +119,7 @@ async fn main() {
 
     let core_pattern_monitor = CorePatternMonitor::new(
         candle_store.clone(),
+        feature_store.clone(),
         core_pattern_state.clone(),
         CorePatternMonitorConfig::new(ingestion_config.coins.clone(), core_pattern_intervals),
     );

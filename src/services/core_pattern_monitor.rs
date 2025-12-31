@@ -3,6 +3,7 @@ use std::time::Duration;
 use tokio::time::interval;
 
 use crate::business_logic::patterns::candlesticks::detect_candlestick_patterns;
+use crate::business_logic::patterns::chart_patterns::detect_chart_patterns;
 use crate::business_logic::patterns::gaps::detect_gap_patterns;
 use crate::business_logic::patterns::DetectedPattern;
 use crate::models::candle::Candle;
@@ -10,6 +11,7 @@ use crate::models::interval::CandleInterval;
 use crate::models::patterns::PatternDetection;
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
 use crate::services::core_pattern_state::SharedCorePatternState;
+use crate::services::feature_store::SharedFeatureStore;
 
 pub struct CorePatternMonitorConfig {
     pub coins: Vec<String>,
@@ -29,6 +31,7 @@ impl CorePatternMonitorConfig {
 
 pub struct CorePatternMonitor {
     store: SharedCandleStore,
+    feature_store: SharedFeatureStore,
     state: SharedCorePatternState,
     config: CorePatternMonitorConfig,
 }
@@ -36,11 +39,13 @@ pub struct CorePatternMonitor {
 impl CorePatternMonitor {
     pub fn new(
         store: SharedCandleStore,
+        feature_store: SharedFeatureStore,
         state: SharedCorePatternState,
         config: CorePatternMonitorConfig,
     ) -> Self {
         Self {
             store,
+            feature_store,
             state,
             config,
         }
@@ -64,7 +69,13 @@ impl CorePatternMonitor {
             for interval in &self.config.intervals {
                 let key = CandleKey::new(coin.to_string(), *interval);
                 if let Some(candles) = self.store.get(&key).await {
-                    detections.extend(build_detections(coin, *interval, &candles));
+                    let features = self.feature_store.get(&key).await;
+                    detections.extend(build_detections(
+                        coin,
+                        *interval,
+                        &candles,
+                        features.as_ref(),
+                    ));
                 }
             }
         }
@@ -74,9 +85,15 @@ impl CorePatternMonitor {
     }
 }
 
-fn build_detections(coin: &str, interval: CandleInterval, candles: &[Candle]) -> Vec<PatternDetection> {
+fn build_detections(
+    coin: &str,
+    interval: CandleInterval,
+    candles: &[Candle],
+    features: Option<&crate::business_logic::features::FeatureSnapshot>,
+) -> Vec<PatternDetection> {
     let mut patterns = detect_candlestick_patterns(candles);
     patterns.extend(detect_gap_patterns(candles));
+    patterns.extend(detect_chart_patterns(candles, features, interval));
 
     patterns
         .into_iter()
