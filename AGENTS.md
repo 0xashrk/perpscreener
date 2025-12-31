@@ -12,6 +12,9 @@ Guidelines:
 
 Frontend code lives in this repo under `frontend/`.
 
+Backend endpoint details live in `openapi/`.
+Use `openapi/backend_openapi.outline.json` for general details and `openapi/backend_openapi.json` for full details.
+
 ---
 
 ## Project Hierarchy
