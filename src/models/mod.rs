@@ -8,5 +8,7 @@ pub mod double_top;
 pub mod health;
 /// Interval helpers for HL candles.
 pub mod interval;
+/// Pattern screening request/response models.
+pub mod patterns;
 /// VWAP request/response models.
 pub mod vwap;

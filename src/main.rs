@@ -18,15 +18,21 @@ use crate::business_logic::features::FeatureConfig;
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
+use crate::handlers::patterns::get_patterns;
 use crate::handlers::vwap::{get_vwap_snapshot, get_vwap_stream};
 use crate::models::candle::Candle;
 use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
 use crate::models::double_top::{CoinPatternStatus, DoubleTopResponse};
 use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
+use crate::models::patterns::{
+    CoinList, IntervalList, PatternClassification, PatternDetection, PatternQuery, PatternResponse,
+    PatternSignalType,
+};
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::candle_ingestion::{CandleIngestionConfig, CandleIngestionService};
 use crate::services::candle_store::CandleStoreInner;
+use crate::services::core_pattern_state::CorePatternStateInner;
 use crate::services::feature_store::FeatureStoreInner;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::monitor::MonitorService;
@@ -39,6 +45,7 @@ use crate::state::AppState;
         handlers::health::health,
         handlers::double_top::get_double_top_status,
         handlers::double_top::get_double_top_stream,
+        handlers::patterns::get_patterns,
         handlers::chart::get_chart_stream,
         handlers::chart::get_chart_snapshot,
         handlers::vwap::get_vwap_stream,
@@ -57,6 +64,13 @@ use crate::state::AppState;
         VwapStreamQuery,
         VwapTimeframe,
         Candle,
+        PatternQuery,
+        PatternResponse,
+        PatternDetection,
+        PatternClassification,
+        PatternSignalType,
+        CoinList,
+        IntervalList,
         errors::ErrorResponse
     ))
 )]
@@ -75,8 +89,10 @@ async fn main() {
     let ingestion_config = CandleIngestionConfig::new(coins.clone());
     let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
     let feature_store = Arc::new(FeatureStoreInner::new(FeatureConfig::default()));
+    let core_pattern_state = Arc::new(CorePatternStateInner::new());
     let app_state = AppState {
         pattern_state: pattern_state.clone(),
+        core_pattern_state,
         candle_store: candle_store.clone(),
         feature_store: feature_store.clone(),
         hyperliquid: Arc::new(HyperliquidClient::new()),
@@ -130,10 +146,12 @@ async fn main() {
     let vwap_routes = Router::new()
         .route("/", get(get_vwap_snapshot))
         .route("/stream", get(get_vwap_stream));
+    let pattern_routes = Router::new().route("/", get(get_patterns));
 
     let app = Router::new()
         .route("/health", get(health))
         .nest("/double-top", double_top_routes)
+        .nest("/patterns", pattern_routes)
         .nest("/chart", chart_routes)
         .nest("/vwap", vwap_routes)
         .with_state(app_state)

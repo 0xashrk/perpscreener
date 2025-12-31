@@ -4,6 +4,8 @@ pub mod chart;
 pub mod double_top;
 /// Health check handler.
 pub mod health;
+/// Core pattern screening handlers.
+pub mod patterns;
 /// Shared query extractors.
 pub mod query;
 /// VWAP streaming handlers.

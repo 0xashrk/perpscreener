@@ -4,6 +4,8 @@ pub mod candles;
 pub mod candle_ingestion;
 /// In-memory candle cache.
 pub mod candle_store;
+/// Core pattern detection state store.
+pub mod core_pattern_state;
 /// Chart snapshot and streaming orchestration.
 pub mod chart;
 /// Shared feature precompute store.
