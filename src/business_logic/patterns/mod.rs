@@ -1,4 +1,5 @@
 pub mod candlesticks;
+pub mod gaps;
 
 use crate::models::patterns::{PatternClassification, PatternSignalType};
 

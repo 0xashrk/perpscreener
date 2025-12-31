@@ -3,6 +3,7 @@ use std::time::Duration;
 use tokio::time::interval;
 
 use crate::business_logic::patterns::candlesticks::detect_candlestick_patterns;
+use crate::business_logic::patterns::gaps::detect_gap_patterns;
 use crate::business_logic::patterns::DetectedPattern;
 use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
@@ -74,7 +75,9 @@ impl CorePatternMonitor {
 }
 
 fn build_detections(coin: &str, interval: CandleInterval, candles: &[Candle]) -> Vec<PatternDetection> {
-    let patterns = detect_candlestick_patterns(candles);
+    let mut patterns = detect_candlestick_patterns(candles);
+    patterns.extend(detect_gap_patterns(candles));
+
     patterns
         .into_iter()
         .filter_map(|pattern| to_detection(coin, interval, candles, pattern))
