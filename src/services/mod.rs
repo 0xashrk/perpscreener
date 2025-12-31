@@ -1,5 +1,7 @@
 /// Candle normalization helpers shared across services.
 pub mod candles;
+/// In-memory candle cache.
+pub mod candle_store;
 /// Chart snapshot and streaming orchestration.
 pub mod chart;
 /// Hyperliquid API client.

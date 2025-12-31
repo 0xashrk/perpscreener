@@ -4,7 +4,11 @@
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 0 | Data ingestion, storage, and feature precompute | Planned |
+| 0 | Data ingestion, storage, and feature precompute | In Progress |
+| 0a | Candle cache primitives + tests | Completed |
+| 0b | Feature precompute primitives/store + tests | Planned |
+| 0c | Ingestion wiring + state integration + tests | Planned |
+| 0d | Frontend pattern screening scaffolding + tests | Planned |
 | 1 | Core pattern detection (candlesticks + gaps) | Planned |
 | 2 | Chart patterns (continuation, reversal, channels) | Planned |
 | 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Planned |
