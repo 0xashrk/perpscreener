@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { PATTERN_INTERVALS, TOKENS } from "../../config";
+import { useAdvancedPatternStream } from "../../hooks/useAdvancedPatternStream";
 import { usePatternStream } from "../../hooks/usePatternStream";
+import { AdvancedPatternList } from "./AdvancedPatternList";
 import { PatternFilters } from "./PatternFilters";
 import { PatternList } from "./PatternList";
 import { PatternScreeningStub } from "./PatternScreeningStub";
@@ -21,6 +23,7 @@ const clampSelection = <T,>(items: T[], item: T, fallback: T[]): T[] => {
 };
 
 export const PatternScreeningPage = () => {
+  const [activePanel, setActivePanel] = useState<"core" | "advanced">("core");
   const [activeTokens, setActiveTokens] = useState<string[]>([...TOKENS]);
   const [activeIntervals, setActiveIntervals] = useState<string[]>([...PATTERN_INTERVALS]);
 
@@ -28,6 +31,7 @@ export const PatternScreeningPage = () => {
   const intervalsInScope = useMemo(() => [...activeIntervals], [activeIntervals]);
 
   const stream = usePatternStream();
+  const advancedStream = useAdvancedPatternStream();
 
   const sortedDetections = useMemo(() => {
     return stream.snapshot.detections
@@ -36,6 +40,14 @@ export const PatternScreeningPage = () => {
       .sort((a, b) => b.detectedAtMs - a.detectedAtMs)
       .slice(0, 100);
   }, [intervalsInScope, stream.snapshot.detections, tokensInScope]);
+
+  const sortedAdvanced = useMemo(() => {
+    return advancedStream.snapshot.detections
+      .filter((detection) => tokensInScope.includes(detection.coin))
+      .filter((detection) => intervalsInScope.includes(detection.interval))
+      .sort((a, b) => b.detectedAtMs - a.detectedAtMs)
+      .slice(0, 100);
+  }, [advancedStream.snapshot.detections, intervalsInScope, tokensInScope]);
 
   const handleToggleToken = (token: string) => {
     setActiveTokens((prev) => clampSelection(prev, token, TOKENS));
@@ -58,7 +70,41 @@ export const PatternScreeningPage = () => {
         </p>
       </header>
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <PatternList detections={sortedDetections} status={stream.status} error={stream.error} />
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 rounded-full bg-white/70 p-1 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+            <button
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                activePanel === "core"
+                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
+              }`}
+              onClick={() => setActivePanel("core")}
+              type="button"
+            >
+              Core
+            </button>
+            <button
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                activePanel === "advanced"
+                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
+              }`}
+              onClick={() => setActivePanel("advanced")}
+              type="button"
+            >
+              Advanced
+            </button>
+          </div>
+          {activePanel === "core" ? (
+            <PatternList detections={sortedDetections} status={stream.status} error={stream.error} />
+          ) : (
+            <AdvancedPatternList
+              detections={sortedAdvanced}
+              status={advancedStream.status}
+              error={advancedStream.error}
+            />
+          )}
+        </div>
         <div className="flex flex-col gap-4">
           <PatternFilters
             tokens={TOKENS}
@@ -69,9 +115,11 @@ export const PatternScreeningPage = () => {
             onToggleInterval={handleToggleInterval}
           />
           <PatternScreeningStub
-            signals={sortedDetections.slice(0, 3)}
-            status={stream.status}
-            lastUpdatedMs={stream.snapshot.asOfMs}
+            signals={(activePanel === "core" ? sortedDetections : sortedAdvanced).slice(0, 3)}
+            status={activePanel === "core" ? stream.status : advancedStream.status}
+            lastUpdatedMs={
+              activePanel === "core" ? stream.snapshot.asOfMs : advancedStream.snapshot.asOfMs
+            }
           />
         </div>
       </div>

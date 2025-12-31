@@ -10,6 +10,14 @@ vi.mock("../hooks/usePatternStream", () => ({
   })
 }));
 
+vi.mock("../hooks/useAdvancedPatternStream", () => ({
+  useAdvancedPatternStream: () => ({
+    status: "open",
+    snapshot: { asOfMs: 0, detections: [] },
+    error: ""
+  })
+}));
+
 describe("PatternScreeningPage", () => {
   it("renders the pattern screening header copy", () => {
     render(<PatternScreeningPage />);

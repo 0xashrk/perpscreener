@@ -27,3 +27,14 @@ export type PatternSnapshot = {
   asOfMs: number;
   detections: PatternDetection[];
 };
+
+export type AdvancedPatternDetection = PatternDetection & {
+  method: string;
+  basis: string;
+  assumptions: string[];
+};
+
+export type AdvancedPatternSnapshot = {
+  asOfMs: number;
+  detections: AdvancedPatternDetection[];
+};

@@ -1,8 +1,7 @@
-import { PatternDetection } from "../../types/patterns";
 import { StreamStatus } from "../../types/stream";
 
 type PatternScreeningStubProps = {
-  signals: PatternDetection[];
+  signals: Array<{ pattern: string }>;
   status: StreamStatus;
   lastUpdatedMs: number;
 };
