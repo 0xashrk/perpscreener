@@ -5,7 +5,7 @@ import { PatternScreeningPage } from "../features/patterns/PatternScreeningPage"
 vi.mock("../hooks/usePatternStream", () => ({
   usePatternStream: () => ({
     status: "open",
-    snapshot: { asOfMs: 0, detections: [] },
+    snapshot: { asOfMs: 0, detections: [], summaries: [] },
     error: ""
   })
 }));

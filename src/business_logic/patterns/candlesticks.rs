@@ -1,9 +1,8 @@
 use crate::models::candle::Candle;
 
+use super::candlesticks_bearish;
+use super::candlesticks_bullish;
 use super::DetectedPattern;
-
-mod candlesticks_bullish;
-mod candlesticks_bearish;
 
 pub fn detect_candlestick_patterns(candles: &[Candle]) -> Vec<DetectedPattern> {
     if candles.is_empty() {

@@ -10,8 +10,6 @@ pub mod types;
 
 use crate::models::candle::Candle;
 
-use types::{FeatureConfig, FeatureSnapshot};
-
 pub use types::{
     AtrPoint, AtrSnapshot, CandleBodyRatio, FeatureConfig, FeatureSnapshot, Gap, GapDirection,
     Pivot, PivotKind, PriceRange, Trendline, TrendlineKind, VolatilityPoint, VolatilitySnapshot,

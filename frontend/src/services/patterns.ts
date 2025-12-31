@@ -3,6 +3,8 @@ import {
   AdvancedPatternSnapshot,
   PatternDetection,
   PatternSnapshot,
+  PatternSummary,
+  PatternSummarySignal,
   PatternSignalType
 } from "../types/patterns";
 import { ParseResult } from "../types/stream";
@@ -113,6 +115,67 @@ const parseAdvancedDetection = (item: JsonObject): AdvancedPatternDetection | nu
   };
 };
 
+const parseSummarySignal = (item: JsonObject): PatternSummarySignal | null => {
+  const pattern = item["pattern"];
+  const classification = item["classification"];
+  const confidence = item["confidence"];
+
+  if (typeof pattern !== "string" || typeof classification !== "string" || typeof confidence !== "number") {
+    return null;
+  }
+
+  if (!isClassification(classification)) {
+    return null;
+  }
+
+  return {
+    pattern,
+    classification,
+    confidence
+  };
+};
+
+const parseSummary = (item: JsonObject): PatternSummary | null => {
+  const coin = item["coin"];
+  const interval = item["interval"];
+  const bullishScore = item["bullish_score"];
+  const bearishScore = item["bearish_score"];
+  const neutralScore = item["neutral_score"];
+  const topSignalsRaw = item["top_signals"];
+
+  if (
+    typeof coin !== "string" ||
+    typeof interval !== "string" ||
+    typeof bullishScore !== "number" ||
+    typeof bearishScore !== "number" ||
+    typeof neutralScore !== "number"
+  ) {
+    return null;
+  }
+
+  const topSignals: PatternSummarySignal[] = [];
+  if (Array.isArray(topSignalsRaw)) {
+    topSignalsRaw.forEach((entry) => {
+      if (!isObject(entry)) {
+        return;
+      }
+      const parsed = parseSummarySignal(entry);
+      if (parsed) {
+        topSignals.push(parsed);
+      }
+    });
+  }
+
+  return {
+    coin,
+    interval,
+    bullishScore,
+    bearishScore,
+    neutralScore,
+    topSignals
+  };
+};
+
 const parseSnapshot = (data: JsonValue): PatternSnapshot => {
   if (!isObject(data)) {
     throw new Error("Invalid snapshot payload");
@@ -120,6 +183,7 @@ const parseSnapshot = (data: JsonValue): PatternSnapshot => {
 
   const asOfMs = data["as_of_ms"];
   const detectionsRaw = data["detections"];
+  const summariesRaw = data["summaries"];
 
   if (typeof asOfMs !== "number" || !Array.isArray(detectionsRaw)) {
     throw new Error("Missing pattern fields");
@@ -136,7 +200,20 @@ const parseSnapshot = (data: JsonValue): PatternSnapshot => {
     }
   });
 
-  return { asOfMs, detections };
+  const summaries: PatternSummary[] = [];
+  if (Array.isArray(summariesRaw)) {
+    summariesRaw.forEach((item) => {
+      if (!isObject(item)) {
+        return;
+      }
+      const parsed = parseSummary(item);
+      if (parsed) {
+        summaries.push(parsed);
+      }
+    });
+  }
+
+  return { asOfMs, detections, summaries };
 };
 
 export const parsePatternSnapshot = (data: string): ParseResult<PatternSnapshot> => {

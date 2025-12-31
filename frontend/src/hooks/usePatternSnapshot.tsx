@@ -15,7 +15,7 @@ type PatternSnapshotQuery = {
   sinceMs: number;
 };
 
-const EMPTY_SNAPSHOT: PatternSnapshot = { asOfMs: 0, detections: [] };
+const EMPTY_SNAPSHOT: PatternSnapshot = { asOfMs: 0, detections: [], summaries: [] };
 
 export const usePatternSnapshot = (query: PatternSnapshotQuery): PatternSnapshotState => {
   const [state, setState] = useState<PatternSnapshotState>({

@@ -11,7 +11,7 @@ type PatternStreamState = {
   error: string;
 };
 
-const EMPTY_SNAPSHOT: PatternSnapshot = { asOfMs: 0, detections: [] };
+const EMPTY_SNAPSHOT: PatternSnapshot = { asOfMs: 0, detections: [], summaries: [] };
 
 export const usePatternStream = (): PatternStreamState => {
   const [state, setState] = useState<PatternStreamState>({

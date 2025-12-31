@@ -26,6 +26,22 @@ export type PatternDetection = {
 export type PatternSnapshot = {
   asOfMs: number;
   detections: PatternDetection[];
+  summaries: PatternSummary[];
+};
+
+export type PatternSummarySignal = {
+  pattern: string;
+  classification: PatternClassification;
+  confidence: number;
+};
+
+export type PatternSummary = {
+  coin: string;
+  interval: string;
+  bullishScore: number;
+  bearishScore: number;
+  neutralScore: number;
+  topSignals: PatternSummarySignal[];
 };
 
 export type AdvancedPatternDetection = PatternDetection & {

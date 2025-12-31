@@ -69,8 +69,10 @@ impl CandleIngestionService {
     }
 
     pub async fn warmup(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        for coin in &self.config.coins {
-            for interval in &self.config.intervals {
+        let coins = self.config.coins.clone();
+        let intervals = self.config.intervals.clone();
+        for coin in &coins {
+            for interval in &intervals {
                 self.warmup_key(coin, *interval).await?;
             }
         }
@@ -79,16 +81,18 @@ impl CandleIngestionService {
 
     pub async fn run(&mut self) {
         let mut ticker = interval(self.config.poll_interval);
+        let coins = self.config.coins.clone();
+        let intervals = self.config.intervals.clone();
 
         loop {
             ticker.tick().await;
-            for coin in &self.config.coins {
-                for interval in &self.config.intervals {
-                    if let Err(err) = self.refresh_key(coin, *interval).await {
+            for coin in &coins {
+                for candle_interval in &intervals {
+                    if let Err(err) = self.refresh_key(coin, *candle_interval).await {
                         tracing::error!(
                             "Candle refresh failed for {} {}: {}",
                             coin,
-                            interval,
+                            candle_interval,
                             err
                         );
                     }

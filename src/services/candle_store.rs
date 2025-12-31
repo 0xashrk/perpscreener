@@ -50,12 +50,13 @@ impl CandleStoreInner {
         let mut guard = self.candles.write().await;
         let entry = guard.entry(key).or_insert_with(Vec::new);
         let before = entry.len();
+        let new_count = new_candles.len();
         *entry = merge_candles(entry, new_candles, self.max_candles);
         let after = entry.len();
 
         CandleUpdateSummary {
             added: after.saturating_sub(before),
-            trimmed: before.saturating_add(new_candles.len()).saturating_sub(after),
+            trimmed: before.saturating_add(new_count).saturating_sub(after),
             total: after,
             newest_close_time: entry.last().map(|c| c.close_time),
             oldest_close_time: entry.first().map(|c| c.close_time),

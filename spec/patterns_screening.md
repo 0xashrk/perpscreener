@@ -21,7 +21,8 @@
 | 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Completed |
 | 3a | Advanced detectors + endpoint/state | Completed |
 | 3b | Advanced SSE + frontend advanced tab | Completed |
-| 4 | Aggregation, scoring, and client delivery (REST + SSE) | Planned |
+| 4 | Aggregation, scoring, and client delivery (REST + SSE) | In Progress |
+| 4a | Summary schema + parsing scaffolding + compile fixes | Completed |
 
 ---
 
