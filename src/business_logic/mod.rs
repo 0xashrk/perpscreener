@@ -6,5 +6,7 @@ pub mod double_top;
 pub mod features;
 /// Indicators like ATR and swing detection.
 pub mod indicators;
+/// Pattern detection logic.
+pub mod patterns;
 /// VWAP calculation helpers.
 pub mod vwap;

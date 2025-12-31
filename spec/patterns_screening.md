@@ -11,7 +11,7 @@
 | 0d | Frontend pattern screening scaffolding + tests | Completed |
 | 1 | Core pattern detection (candlesticks + gaps) | In Progress |
 | 1a | Core detection data model + REST skeleton | Completed |
-| 1b | Candlestick pattern detectors | Planned |
+| 1b | Candlestick pattern detectors | Completed |
 | 1c | Gap pattern detectors | Planned |
 | 1d | Frontend core patterns list + filters | Planned |
 | 2 | Chart patterns (continuation, reversal, channels) | Planned |

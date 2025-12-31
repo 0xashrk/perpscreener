@@ -32,6 +32,7 @@ use crate::models::patterns::{
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::candle_ingestion::{CandleIngestionConfig, CandleIngestionService};
 use crate::services::candle_store::CandleStoreInner;
+use crate::services::core_pattern_monitor::{CorePatternMonitor, CorePatternMonitorConfig};
 use crate::services::core_pattern_state::CorePatternStateInner;
 use crate::services::feature_store::FeatureStoreInner;
 use crate::services::hyperliquid::HyperliquidClient;
@@ -88,11 +89,12 @@ async fn main() {
     let coins = vec!["BTC".to_string(), "ETH".to_string(), "SOL".to_string()];
     let ingestion_config = CandleIngestionConfig::new(coins.clone());
     let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
+    let core_pattern_intervals = ingestion_config.intervals.clone();
     let feature_store = Arc::new(FeatureStoreInner::new(FeatureConfig::default()));
     let core_pattern_state = Arc::new(CorePatternStateInner::new());
     let app_state = AppState {
         pattern_state: pattern_state.clone(),
-        core_pattern_state,
+        core_pattern_state: core_pattern_state.clone(),
         candle_store: candle_store.clone(),
         feature_store: feature_store.clone(),
         hyperliquid: Arc::new(HyperliquidClient::new()),
@@ -113,6 +115,16 @@ async fn main() {
 
         tracing::info!("Double top detection active, monitoring every 60s");
         monitor.run().await;
+    });
+
+    let core_pattern_monitor = CorePatternMonitor::new(
+        candle_store.clone(),
+        core_pattern_state.clone(),
+        CorePatternMonitorConfig::new(ingestion_config.coins.clone(), core_pattern_intervals),
+    );
+
+    tokio::spawn(async move {
+        core_pattern_monitor.run().await;
     });
 
     let ingestion_store = candle_store.clone();
