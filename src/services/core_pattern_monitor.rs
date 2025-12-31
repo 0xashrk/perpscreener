@@ -8,7 +8,7 @@ use crate::business_logic::patterns::gaps::detect_gap_patterns;
 use crate::business_logic::patterns::DetectedPattern;
 use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
-use crate::models::patterns::PatternDetection;
+use crate::models::patterns::{PatternDetection, PatternResponse};
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
 use crate::services::core_pattern_state::SharedCorePatternState;
 use crate::services::feature_store::SharedFeatureStore;
@@ -80,8 +80,15 @@ impl CorePatternMonitor {
             }
         }
 
+        let as_of_ms = chrono::Utc::now().timestamp_millis() as u64;
+        let snapshot = PatternResponse {
+            as_of_ms,
+            detections: detections.clone(),
+        };
+
         let mut guard = self.state.detections.write().await;
         *guard = detections;
+        let _ = self.state.broadcaster.send(snapshot);
     }
 }
 

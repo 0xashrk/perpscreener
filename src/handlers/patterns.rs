@@ -1,6 +1,14 @@
 use std::collections::{HashMap, HashSet};
+use std::convert::Infallible;
+use std::time::Duration;
 
-use axum::{extract::State, Json};
+use axum::{
+    extract::State,
+    response::sse::{Event, KeepAlive, Sse},
+    Json,
+};
+use tokio_stream::wrappers::{errors::BroadcastStreamRecvError, BroadcastStream};
+use tokio_stream::StreamExt;
 
 use crate::errors::AppError;
 use crate::handlers::query::ValidatedQuery;
@@ -28,6 +36,40 @@ pub async fn get_patterns(
         as_of_ms: chrono::Utc::now().timestamp_millis() as u64,
         detections: trimmed,
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/patterns/stream",
+    responses(
+        (status = 200, description = "SSE stream of core pattern snapshots", content_type = "text/event-stream")
+    )
+)]
+/// Stream core pattern snapshots over SSE.
+pub async fn get_patterns_stream(
+    State(state): State<AppState>,
+) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, AppError> {
+    let initial_detections = state.core_pattern_state.detections.read().await.clone();
+    let initial_snapshot = PatternResponse {
+        as_of_ms: chrono::Utc::now().timestamp_millis() as u64,
+        detections: initial_detections,
+    };
+
+    let initial_events = match snapshot_event(initial_snapshot) {
+        Some(event) => vec![Ok(event)],
+        None => Vec::new(),
+    };
+    let initial_stream = tokio_stream::iter(initial_events);
+
+    let rx = state.core_pattern_state.broadcaster.subscribe();
+    let broadcast_stream = BroadcastStream::new(rx).filter_map(|message| match message {
+        Ok(snapshot) => snapshot_event(snapshot).map(Ok),
+        Err(BroadcastStreamRecvError::Lagged(_)) => None,
+    });
+
+    let stream = initial_stream.chain(broadcast_stream);
+
+    Ok(Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15))))
 }
 
 fn filter_detections(detections: Vec<PatternDetection>, query: &PatternQuery) -> Vec<PatternDetection> {
@@ -89,6 +131,16 @@ fn limit_per_group(detections: Vec<PatternDetection>, limit: usize) -> Vec<Patte
     });
 
     trimmed
+}
+
+fn snapshot_event(snapshot: PatternResponse) -> Option<Event> {
+    let data = serde_json::to_string(&snapshot).ok()?;
+    Some(
+        Event::default()
+            .event("snapshot")
+            .id(snapshot.as_of_ms.to_string())
+            .data(data),
+    )
 }
 
 #[cfg(test)]

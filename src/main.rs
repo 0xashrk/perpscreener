@@ -18,7 +18,7 @@ use crate::business_logic::features::FeatureConfig;
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
-use crate::handlers::patterns::get_patterns;
+use crate::handlers::patterns::{get_patterns, get_patterns_stream};
 use crate::handlers::vwap::{get_vwap_snapshot, get_vwap_stream};
 use crate::models::candle::Candle;
 use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
@@ -47,6 +47,7 @@ use crate::state::AppState;
         handlers::double_top::get_double_top_status,
         handlers::double_top::get_double_top_stream,
         handlers::patterns::get_patterns,
+        handlers::patterns::get_patterns_stream,
         handlers::chart::get_chart_stream,
         handlers::chart::get_chart_snapshot,
         handlers::vwap::get_vwap_stream,
@@ -159,7 +160,9 @@ async fn main() {
     let vwap_routes = Router::new()
         .route("/", get(get_vwap_snapshot))
         .route("/stream", get(get_vwap_stream));
-    let pattern_routes = Router::new().route("/", get(get_patterns));
+    let pattern_routes = Router::new()
+        .route("/", get(get_patterns))
+        .route("/stream", get(get_patterns_stream));
 
     let app = Router::new()
         .route("/health", get(health))

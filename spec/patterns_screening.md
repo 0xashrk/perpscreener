@@ -16,7 +16,7 @@
 | 1d | Frontend core patterns list + filters | Completed |
 | 2 | Chart patterns (continuation, reversal, channels) | In Progress |
 | 2a | Chart pattern detectors + state updates | Completed |
-| 2b | Core patterns SSE stream | Planned |
+| 2b | Core patterns SSE stream | Completed |
 | 2c | Frontend live updates + chart overlays | Planned |
 | 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Planned |
 | 4 | Aggregation, scoring, and client delivery (REST + SSE) | Planned |
