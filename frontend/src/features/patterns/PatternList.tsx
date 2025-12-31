@@ -1,8 +1,9 @@
 import { PatternDetection } from "../../types/patterns";
+import { StreamStatus } from "../../types/stream";
 
 type PatternListProps = {
   detections: PatternDetection[];
-  status: "idle" | "loading" | "ready" | "error";
+  status: StreamStatus;
   error: string;
 };
 
@@ -25,7 +26,7 @@ const formatTimestamp = (value: number) => {
 };
 
 export const PatternList = ({ detections, status, error }: PatternListProps) => {
-  if (status === "loading") {
+  if (status === "connecting" || status === "reconnecting") {
     return (
       <div className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
         <p className="text-sm text-slate-600">Loading pattern detections…</p>

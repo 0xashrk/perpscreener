@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { PATTERN_INTERVALS, TOKENS } from "../../config";
-import { usePatternSnapshot } from "../../hooks/usePatternSnapshot";
+import { usePatternStream } from "../../hooks/usePatternStream";
 import { PatternFilters } from "./PatternFilters";
 import { PatternList } from "./PatternList";
 import { PatternScreeningStub } from "./PatternScreeningStub";
@@ -27,16 +27,15 @@ export const PatternScreeningPage = () => {
   const tokensInScope = useMemo(() => [...activeTokens], [activeTokens]);
   const intervalsInScope = useMemo(() => [...activeIntervals], [activeIntervals]);
 
-  const snapshot = usePatternSnapshot({
-    coins: tokensInScope,
-    intervals: intervalsInScope,
-    limit: 25,
-    sinceMs: 0
-  });
+  const stream = usePatternStream();
 
   const sortedDetections = useMemo(() => {
-    return [...snapshot.data.detections].sort((a, b) => b.detectedAtMs - a.detectedAtMs);
-  }, [snapshot.data.detections]);
+    return stream.snapshot.detections
+      .filter((detection) => tokensInScope.includes(detection.coin))
+      .filter((detection) => intervalsInScope.includes(detection.interval))
+      .sort((a, b) => b.detectedAtMs - a.detectedAtMs)
+      .slice(0, 100);
+  }, [intervalsInScope, stream.snapshot.detections, tokensInScope]);
 
   const handleToggleToken = (token: string) => {
     setActiveTokens((prev) => clampSelection(prev, token, TOKENS));
@@ -59,7 +58,7 @@ export const PatternScreeningPage = () => {
         </p>
       </header>
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <PatternList detections={sortedDetections} status={snapshot.status} error={snapshot.error} />
+        <PatternList detections={sortedDetections} status={stream.status} error={stream.error} />
         <div className="flex flex-col gap-4">
           <PatternFilters
             tokens={TOKENS}
@@ -69,7 +68,11 @@ export const PatternScreeningPage = () => {
             activeIntervals={intervalsInScope}
             onToggleInterval={handleToggleInterval}
           />
-          <PatternScreeningStub />
+          <PatternScreeningStub
+            signals={sortedDetections.slice(0, 3)}
+            status={stream.status}
+            lastUpdatedMs={stream.snapshot.asOfMs}
+          />
         </div>
       </div>
     </section>

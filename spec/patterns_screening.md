@@ -14,10 +14,10 @@
 | 1b | Candlestick pattern detectors | Completed |
 | 1c | Gap pattern detectors | Completed |
 | 1d | Frontend core patterns list + filters | Completed |
-| 2 | Chart patterns (continuation, reversal, channels) | In Progress |
+| 2 | Chart patterns (continuation, reversal, channels) | Completed |
 | 2a | Chart pattern detectors + state updates | Completed |
 | 2b | Core patterns SSE stream | Completed |
-| 2c | Frontend live updates + chart overlays | Planned |
+| 2c | Frontend live updates + chart overlays | Completed |
 | 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Planned |
 | 4 | Aggregation, scoring, and client delivery (REST + SSE) | Planned |
 

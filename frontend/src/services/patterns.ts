@@ -1,4 +1,5 @@
 import { PatternDetection, PatternSnapshot, PatternSignalType } from "../types/patterns";
+import { ParseResult } from "../types/stream";
 import { buildApiUrl } from "./url";
 
 type JsonValue = string | number | boolean | JsonObject | JsonValue[];
@@ -105,6 +106,16 @@ const parseSnapshot = (data: JsonValue): PatternSnapshot => {
   });
 
   return { asOfMs, detections };
+};
+
+export const parsePatternSnapshot = (data: string): ParseResult<PatternSnapshot> => {
+  try {
+    const parsed = JSON.parse(data) as JsonValue;
+    return { ok: true, value: parseSnapshot(parsed) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON";
+    return { ok: false, reason: message };
+  }
 };
 
 const buildPatternQuery = (query: PatternQuery): Record<string, string> => {
