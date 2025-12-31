@@ -68,6 +68,7 @@ Scope:
 Deliverables:
 - Stable candle ingestion layer.
 - Shared feature store for reuse by detectors.
+- Frontend scaffolding for pattern screening views (routes, empty states, wiring stubs).
 
 ### Phase 1: Core Pattern Detection (Candlesticks + Gaps)
 
@@ -78,6 +79,7 @@ Scope:
 Deliverables:
 - Core detectors with confidence scoring.
 - Basic REST response for latest detections.
+- Frontend list/table view for core patterns with filters (coin, interval) and confidence display.
 
 ### Phase 2: Chart Patterns (Continuation, Reversal, Channels)
 
@@ -88,6 +90,7 @@ Scope:
 Deliverables:
 - Pattern detectors that leverage pivots/trendlines.
 - SSE stream for continuous updates.
+- Frontend live updates (SSE) and initial chart overlays for continuation/reversal patterns.
 
 ### Phase 3: Advanced Patterns
 
@@ -99,6 +102,7 @@ Scope:
 Deliverables:
 - Advanced-only endpoint and stream.
 - Heuristic transparency fields (see Data Model).
+- Frontend advanced tab with visual annotations (Fibonacci levels, wave labels, fractals).
 
 ### Phase 4: Aggregation and Delivery
 
@@ -110,6 +114,7 @@ Scope:
 Deliverables:
 - Aggregated summary in core endpoint.
 - Configurable weighting by timeframe and signal type.
+- Frontend aggregation dashboard (bullish/bearish scores, top signals, timeframe weighting controls).
 
 ---
 
