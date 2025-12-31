@@ -2,6 +2,8 @@
 pub mod config;
 /// Double top detection logic and state machine.
 pub mod double_top;
+/// Shared feature precompute for pattern detection.
+pub mod features;
 /// Indicators like ATR and swing detection.
 pub mod indicators;
 /// VWAP calculation helpers.

@@ -4,6 +4,8 @@ pub mod candles;
 pub mod candle_store;
 /// Chart snapshot and streaming orchestration.
 pub mod chart;
+/// Shared feature precompute store.
+pub mod feature_store;
 /// Hyperliquid API client.
 pub mod hyperliquid;
 /// Background monitoring service for pattern updates.

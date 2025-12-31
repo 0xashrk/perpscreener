@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | 0 | Data ingestion, storage, and feature precompute | In Progress |
 | 0a | Candle cache primitives + tests | Completed |
-| 0b | Feature precompute primitives/store + tests | Planned |
+| 0b | Feature precompute primitives/store + tests | Completed |
 | 0c | Ingestion wiring + state integration + tests | Planned |
 | 0d | Frontend pattern screening scaffolding + tests | Planned |
 | 1 | Core pattern detection (candlesticks + gaps) | Planned |
