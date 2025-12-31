@@ -1,5 +1,7 @@
 /// Candle normalization helpers shared across services.
 pub mod candles;
+/// Candle ingestion and cache updater.
+pub mod candle_ingestion;
 /// In-memory candle cache.
 pub mod candle_store;
 /// Chart snapshot and streaming orchestration.

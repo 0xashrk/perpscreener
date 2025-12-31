@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::services::candle_store::SharedCandleStore;
+use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::pattern_state::SharedPatternState;
 
@@ -8,6 +10,10 @@ use crate::services::pattern_state::SharedPatternState;
 pub struct AppState {
     /// In-memory pattern status store and broadcaster.
     pub pattern_state: SharedPatternState,
+    /// Shared candle cache.
+    pub candle_store: SharedCandleStore,
+    /// Shared feature snapshots for detectors.
+    pub feature_store: SharedFeatureStore,
     /// Shared Hyperliquid API client.
     pub hyperliquid: Arc<HyperliquidClient>,
 }

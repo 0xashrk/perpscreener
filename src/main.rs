@@ -14,6 +14,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::business_logic::config::DoubleTopConfig;
+use crate::business_logic::features::FeatureConfig;
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
@@ -24,6 +25,9 @@ use crate::models::double_top::{CoinPatternStatus, DoubleTopResponse};
 use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
+use crate::services::candle_ingestion::{CandleIngestionConfig, CandleIngestionService};
+use crate::services::candle_store::CandleStoreInner;
+use crate::services::feature_store::FeatureStoreInner;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::monitor::MonitorService;
 use crate::services::pattern_state::{PatternStateInner, SharedPatternState};
@@ -67,13 +71,18 @@ async fn main() {
         patterns: RwLock::new(Vec::new()),
         broadcaster,
     });
+    let coins = vec!["BTC".to_string(), "ETH".to_string(), "SOL".to_string()];
+    let ingestion_config = CandleIngestionConfig::new(coins.clone());
+    let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
+    let feature_store = Arc::new(FeatureStoreInner::new(FeatureConfig::default()));
     let app_state = AppState {
         pattern_state: pattern_state.clone(),
+        candle_store: candle_store.clone(),
+        feature_store: feature_store.clone(),
         hyperliquid: Arc::new(HyperliquidClient::new()),
     };
 
     // Start double top monitoring in background
-    let coins = vec!["BTC".to_string(), "ETH".to_string(), "SOL".to_string()];
     let config = DoubleTopConfig::default();
     let monitor_state = pattern_state.clone();
 
@@ -88,6 +97,27 @@ async fn main() {
 
         tracing::info!("Double top detection active, monitoring every 60s");
         monitor.run().await;
+    });
+
+    let ingestion_store = candle_store.clone();
+    let ingestion_features = feature_store.clone();
+
+    tokio::spawn(async move {
+        let mut ingestion = CandleIngestionService::new(
+            HyperliquidClient::new(),
+            ingestion_store,
+            ingestion_features,
+            ingestion_config,
+        );
+
+        tracing::info!("Starting candle ingestion warmup...");
+        if let Err(err) = ingestion.warmup().await {
+            tracing::error!("Candle ingestion warmup failed: {}", err);
+            return;
+        }
+
+        tracing::info!("Candle ingestion active.");
+        ingestion.run().await;
     });
 
     // Start web server
