@@ -6,6 +6,10 @@ pub mod candle_ingestion;
 pub mod candle_store;
 /// Core pattern detection state store.
 pub mod core_pattern_state;
+/// Advanced pattern detection state store.
+pub mod advanced_pattern_state;
+/// Advanced pattern monitoring loop.
+pub mod advanced_pattern_monitor;
 /// Core pattern monitoring loop.
 pub mod core_pattern_monitor;
 /// Chart snapshot and streaming orchestration.

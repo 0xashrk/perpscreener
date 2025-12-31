@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::services::candle_store::SharedCandleStore;
 use crate::services::core_pattern_state::SharedCorePatternState;
+use crate::services::advanced_pattern_state::SharedAdvancedPatternState;
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::pattern_state::SharedPatternState;
@@ -13,6 +14,8 @@ pub struct AppState {
     pub pattern_state: SharedPatternState,
     /// Core pattern detections for screening endpoints.
     pub core_pattern_state: SharedCorePatternState,
+    /// Advanced pattern detections for advanced endpoints.
+    pub advanced_pattern_state: SharedAdvancedPatternState,
     /// Shared candle cache.
     pub candle_store: SharedCandleStore,
     /// Shared feature snapshots for detectors.

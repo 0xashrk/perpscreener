@@ -103,7 +103,7 @@ pub struct PatternQuery {
     pub limit: usize,
     /// Only return detections after this timestamp.
     #[serde(default)]
-    #[param(example = 1735689600000)]
+    #[param(example = 1735689600000_i64)]
     pub since_ms: Option<u64>,
 }
 
@@ -129,6 +129,23 @@ pub struct PatternDetection {
     pub window_end_ms: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
+}
+
+/// Advanced pattern detection payload with heuristic context.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AdvancedPatternDetection {
+    #[serde(flatten)]
+    pub detection: PatternDetection,
+    pub method: String,
+    pub basis: String,
+    pub assumptions: Vec<String>,
+}
+
+/// Advanced pattern snapshot response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AdvancedPatternResponse {
+    pub as_of_ms: u64,
+    pub detections: Vec<AdvancedPatternDetection>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]

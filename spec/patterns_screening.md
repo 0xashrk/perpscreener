@@ -18,7 +18,9 @@
 | 2a | Chart pattern detectors + state updates | Completed |
 | 2b | Core patterns SSE stream | Completed |
 | 2c | Frontend live updates + chart overlays | Completed |
-| 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Planned |
+| 3 | Advanced patterns (Fibonacci, Elliott, fractals) | In Progress |
+| 3a | Advanced detectors + endpoint/state | Completed |
+| 3b | Advanced SSE + frontend advanced tab | Planned |
 | 4 | Aggregation, scoring, and client delivery (REST + SSE) | Planned |
 
 ---
