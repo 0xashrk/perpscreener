@@ -28,7 +28,8 @@ use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList, PatternClassification,
-    PatternDetection, PatternQuery, PatternResponse, PatternSignalType,
+    PatternDetection, PatternQuery, PatternResponse, PatternSignalType, PatternSummary,
+    PatternSummarySignal,
 };
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::candle_ingestion::{CandleIngestionConfig, CandleIngestionService};
@@ -74,6 +75,8 @@ use crate::state::AppState;
         PatternQuery,
         PatternResponse,
         PatternDetection,
+        PatternSummary,
+        PatternSummarySignal,
         AdvancedPatternResponse,
         AdvancedPatternDetection,
         PatternClassification,

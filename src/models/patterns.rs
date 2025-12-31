@@ -112,6 +112,7 @@ pub struct PatternQuery {
 pub struct PatternResponse {
     pub as_of_ms: u64,
     pub detections: Vec<PatternDetection>,
+    pub summaries: Vec<PatternSummary>,
 }
 
 /// Core pattern detection payload.
@@ -129,6 +130,25 @@ pub struct PatternDetection {
     pub window_end_ms: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
+}
+
+/// Aggregated summary of pattern signals per coin/timeframe.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternSummary {
+    pub coin: String,
+    pub interval: CandleInterval,
+    pub bullish_score: f64,
+    pub bearish_score: f64,
+    pub neutral_score: f64,
+    pub top_signals: Vec<PatternSummarySignal>,
+}
+
+/// Highest-weighted signals contributing to the summary.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternSummarySignal {
+    pub pattern: String,
+    pub classification: PatternClassification,
+    pub confidence: f64,
 }
 
 /// Advanced pattern detection payload with heuristic context.
@@ -158,7 +178,7 @@ pub enum PatternClassification {
     Neutral,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 pub enum PatternSignalType {
     #[serde(rename = "reversal")]
     Reversal,

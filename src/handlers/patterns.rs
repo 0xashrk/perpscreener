@@ -10,6 +10,7 @@ use axum::{
 use tokio_stream::wrappers::{errors::BroadcastStreamRecvError, BroadcastStream};
 use tokio_stream::StreamExt;
 
+use crate::business_logic::patterns::aggregation::{summarize_detections, PatternScoreWeights};
 use crate::errors::AppError;
 use crate::handlers::query::ValidatedQuery;
 use crate::models::patterns::{PatternDetection, PatternQuery, PatternResponse};
@@ -31,10 +32,12 @@ pub async fn get_patterns(
     let detections = state.core_pattern_state.detections.read().await.clone();
     let filtered = filter_detections(detections, &query);
     let trimmed = limit_per_group(filtered, query.limit);
+    let summaries = summarize_detections(&trimmed, &PatternScoreWeights::default());
 
     Ok(Json(PatternResponse {
         as_of_ms: chrono::Utc::now().timestamp_millis() as u64,
         detections: trimmed,
+        summaries,
     }))
 }
 
@@ -50,9 +53,12 @@ pub async fn get_patterns_stream(
     State(state): State<AppState>,
 ) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, AppError> {
     let initial_detections = state.core_pattern_state.detections.read().await.clone();
+    let initial_summaries =
+        summarize_detections(&initial_detections, &PatternScoreWeights::default());
     let initial_snapshot = PatternResponse {
         as_of_ms: chrono::Utc::now().timestamp_millis() as u64,
         detections: initial_detections,
+        summaries: initial_summaries,
     };
 
     let initial_events = match snapshot_event(initial_snapshot) {

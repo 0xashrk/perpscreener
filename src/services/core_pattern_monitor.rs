@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use tokio::time::interval;
 
+use crate::business_logic::patterns::aggregation::{summarize_detections, PatternScoreWeights};
 use crate::business_logic::patterns::candlesticks::detect_candlestick_patterns;
 use crate::business_logic::patterns::chart_patterns::detect_chart_patterns;
 use crate::business_logic::patterns::gaps::detect_gap_patterns;
@@ -81,9 +82,11 @@ impl CorePatternMonitor {
         }
 
         let as_of_ms = chrono::Utc::now().timestamp_millis() as u64;
+        let summaries = summarize_detections(&detections, &PatternScoreWeights::default());
         let snapshot = PatternResponse {
             as_of_ms,
             detections: detections.clone(),
+            summaries,
         };
 
         let mut guard = self.state.detections.write().await;

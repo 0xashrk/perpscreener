@@ -23,6 +23,7 @@
 | 3b | Advanced SSE + frontend advanced tab | Completed |
 | 4 | Aggregation, scoring, and client delivery (REST + SSE) | In Progress |
 | 4a | Summary schema + parsing scaffolding + compile fixes | Completed |
+| 4b | Backend aggregation + summaries in core REST/SSE + tests | Completed |
 
 ---
 
