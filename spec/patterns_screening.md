@@ -21,9 +21,10 @@
 | 3 | Advanced patterns (Fibonacci, Elliott, fractals) | Completed |
 | 3a | Advanced detectors + endpoint/state | Completed |
 | 3b | Advanced SSE + frontend advanced tab | Completed |
-| 4 | Aggregation, scoring, and client delivery (REST + SSE) | In Progress |
+| 4 | Aggregation, scoring, and client delivery (REST + SSE) | Completed |
 | 4a | Summary schema + parsing scaffolding + compile fixes | Completed |
 | 4b | Backend aggregation + summaries in core REST/SSE + tests | Completed |
+| 4c | Frontend aggregation dashboard + weighting controls + tests | Completed |
 
 ---
 

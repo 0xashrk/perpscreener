@@ -2,10 +2,14 @@ import { useMemo, useState } from "react";
 import { PATTERN_INTERVALS, TOKENS } from "../../config";
 import { useAdvancedPatternStream } from "../../hooks/useAdvancedPatternStream";
 import { usePatternStream } from "../../hooks/usePatternStream";
+import { PatternSignalType } from "../../types/patterns";
+import { createDefaultWeightConfig, summarizeDetections } from "../../utils/patternAggregation";
 import { AdvancedPatternList } from "./AdvancedPatternList";
 import { PatternFilters } from "./PatternFilters";
 import { PatternList } from "./PatternList";
 import { PatternScreeningStub } from "./PatternScreeningStub";
+import { PatternSummaryPanel } from "./PatternSummaryPanel";
+import { PatternWeightControls } from "./PatternWeightControls";
 
 const toggleItem = <T,>(items: T[], item: T): T[] => {
   if (items.includes(item)) {
@@ -26,6 +30,7 @@ export const PatternScreeningPage = () => {
   const [activePanel, setActivePanel] = useState<"core" | "advanced">("core");
   const [activeTokens, setActiveTokens] = useState<string[]>([...TOKENS]);
   const [activeIntervals, setActiveIntervals] = useState<string[]>([...PATTERN_INTERVALS]);
+  const [weightConfig, setWeightConfig] = useState(() => createDefaultWeightConfig());
 
   const tokensInScope = useMemo(() => [...activeTokens], [activeTokens]);
   const intervalsInScope = useMemo(() => [...activeIntervals], [activeIntervals]);
@@ -33,13 +38,19 @@ export const PatternScreeningPage = () => {
   const stream = usePatternStream();
   const advancedStream = useAdvancedPatternStream();
 
-  const sortedDetections = useMemo(() => {
+  const scopedDetections = useMemo(() => {
     return stream.snapshot.detections
       .filter((detection) => tokensInScope.includes(detection.coin))
-      .filter((detection) => intervalsInScope.includes(detection.interval))
-      .sort((a, b) => b.detectedAtMs - a.detectedAtMs)
-      .slice(0, 100);
+      .filter((detection) => intervalsInScope.includes(detection.interval));
   }, [intervalsInScope, stream.snapshot.detections, tokensInScope]);
+
+  const sortedDetections = useMemo(() => {
+    return [...scopedDetections].sort((a, b) => b.detectedAtMs - a.detectedAtMs).slice(0, 100);
+  }, [scopedDetections]);
+
+  const summaries = useMemo(() => {
+    return summarizeDetections(scopedDetections, weightConfig);
+  }, [scopedDetections, weightConfig]);
 
   const sortedAdvanced = useMemo(() => {
     return advancedStream.snapshot.detections
@@ -55,6 +66,30 @@ export const PatternScreeningPage = () => {
 
   const handleToggleInterval = (interval: string) => {
     setActiveIntervals((prev) => clampSelection(prev, interval, PATTERN_INTERVALS));
+  };
+
+  const handleTimeframeWeightChange = (interval: string, value: number) => {
+    setWeightConfig((prev) => ({
+      ...prev,
+      timeframe: {
+        ...prev.timeframe,
+        [interval]: value
+      }
+    }));
+  };
+
+  const handleSignalWeightChange = (signalType: PatternSignalType, value: number) => {
+    setWeightConfig((prev) => ({
+      ...prev,
+      signalType: {
+        ...prev.signalType,
+        [signalType]: value
+      }
+    }));
+  };
+
+  const handleResetWeights = () => {
+    setWeightConfig(createDefaultWeightConfig());
   };
 
   return (
@@ -106,6 +141,19 @@ export const PatternScreeningPage = () => {
           )}
         </div>
         <div className="flex flex-col gap-4">
+          {activePanel === "core" ? (
+            <>
+              <PatternSummaryPanel summaries={summaries} />
+              <PatternWeightControls
+                intervals={PATTERN_INTERVALS}
+                timeframeWeights={weightConfig.timeframe}
+                signalWeights={weightConfig.signalType}
+                onTimeframeChange={handleTimeframeWeightChange}
+                onSignalChange={handleSignalWeightChange}
+                onReset={handleResetWeights}
+              />
+            </>
+          ) : null}
           <PatternFilters
             tokens={TOKENS}
             activeTokens={tokensInScope}
