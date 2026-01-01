@@ -229,7 +229,8 @@ fn parse_interval_list(input: &str) -> Result<Vec<CandleInterval>, String> {
             continue;
         }
 
-        let interval = CandleInterval::from_str(trimmed)?;
+        let interval = CandleInterval::from_str(trimmed)
+            .map_err(|_| invalid_interval_message())?;
         if seen.insert(interval) {
             intervals.push(interval);
         }

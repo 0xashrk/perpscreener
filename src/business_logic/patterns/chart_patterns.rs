@@ -215,9 +215,9 @@ fn detect_head_shoulders(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
 
 fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
     let mut results = Vec::new();
-    let highs = last_pivots(&features.pivots, PivotKind::High, 3);
-    if highs.len() >= 2 {
-        let last_two = &highs[highs.len() - 2..];
+    let highs_double = last_pivots(&features.pivots, PivotKind::High, 2);
+    if highs_double.len() == 2 {
+        let last_two = &highs_double[highs_double.len() - 2..];
         if within_pct(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT) {
             results.push(chart_pattern(
                 "Double Top",
@@ -228,11 +228,12 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             ));
         }
     }
-    if highs.len() == 3 {
-        let avg = (highs[0].price + highs[1].price + highs[2].price) / 3.0;
-        if within_pct(highs[0].price, avg, PIVOT_TOLERANCE_PCT)
-            && within_pct(highs[1].price, avg, PIVOT_TOLERANCE_PCT)
-            && within_pct(highs[2].price, avg, PIVOT_TOLERANCE_PCT)
+    let highs_triple = last_pivots(&features.pivots, PivotKind::High, 3);
+    if highs_triple.len() == 3 {
+        let avg = (highs_triple[0].price + highs_triple[1].price + highs_triple[2].price) / 3.0;
+        if within_pct(highs_triple[0].price, avg, PIVOT_TOLERANCE_PCT)
+            && within_pct(highs_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
+            && within_pct(highs_triple[2].price, avg, PIVOT_TOLERANCE_PCT)
         {
             results.push(chart_pattern(
                 "Triple Top",
@@ -244,9 +245,9 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
         }
     }
 
-    let lows = last_pivots(&features.pivots, PivotKind::Low, 3);
-    if lows.len() >= 2 {
-        let last_two = &lows[lows.len() - 2..];
+    let lows_double = last_pivots(&features.pivots, PivotKind::Low, 2);
+    if lows_double.len() == 2 {
+        let last_two = &lows_double[lows_double.len() - 2..];
         if within_pct(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT) {
             results.push(chart_pattern(
                 "Double Bottom",
@@ -257,11 +258,12 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             ));
         }
     }
-    if lows.len() == 3 {
-        let avg = (lows[0].price + lows[1].price + lows[2].price) / 3.0;
-        if within_pct(lows[0].price, avg, PIVOT_TOLERANCE_PCT)
-            && within_pct(lows[1].price, avg, PIVOT_TOLERANCE_PCT)
-            && within_pct(lows[2].price, avg, PIVOT_TOLERANCE_PCT)
+    let lows_triple = last_pivots(&features.pivots, PivotKind::Low, 3);
+    if lows_triple.len() == 3 {
+        let avg = (lows_triple[0].price + lows_triple[1].price + lows_triple[2].price) / 3.0;
+        if within_pct(lows_triple[0].price, avg, PIVOT_TOLERANCE_PCT)
+            && within_pct(lows_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
+            && within_pct(lows_triple[2].price, avg, PIVOT_TOLERANCE_PCT)
         {
             results.push(chart_pattern(
                 "Triple Bottom",

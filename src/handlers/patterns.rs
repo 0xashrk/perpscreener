@@ -165,7 +165,7 @@ mod tests {
             signal_type: PatternSignalType::Reversal,
             confidence: 0.5,
             detected_at_ms,
-            window_start_ms: detected_at_ms - 60_000,
+            window_start_ms: detected_at_ms.saturating_sub(60_000),
             window_end_ms: detected_at_ms,
             notes: None,
         }
