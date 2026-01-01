@@ -85,6 +85,8 @@ mod tests {
         let lines = derive_trendlines(&pivots, 2);
         assert_eq!(lines.len(), 2);
         assert!(lines.iter().any(|line| line.kind == TrendlineKind::Support));
-        assert!(lines.iter().any(|line| line.kind == TrendlineKind::Resistance));
+        assert!(lines
+            .iter()
+            .any(|line| line.kind == TrendlineKind::Resistance));
     }
 }

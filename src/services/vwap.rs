@@ -253,7 +253,8 @@ mod tests {
     fn ensure_timeframes_covered_mentions_larger_interval() {
         let now = chrono::Utc.with_ymd_and_hms(2025, 2, 15, 12, 0, 0).unwrap();
         let now_ms = now.timestamp_millis() as u64;
-        let error = ensure_timeframes_covered(&[VwapTimeframe::Monthly], 60_000, now_ms).unwrap_err();
+        let error =
+            ensure_timeframes_covered(&[VwapTimeframe::Monthly], 60_000, now_ms).unwrap_err();
         assert!(error.contains("Use a larger interval."));
     }
 }

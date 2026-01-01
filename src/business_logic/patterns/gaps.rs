@@ -65,7 +65,11 @@ pub fn detect_gap_patterns(candles: &[Candle]) -> Vec<DetectedPattern> {
             ),
         }
     } else {
-        ("Common Gap", PatternClassification::Neutral, PatternSignalType::Range)
+        (
+            "Common Gap",
+            PatternClassification::Neutral,
+            PatternSignalType::Range,
+        )
     };
 
     results.push(DetectedPattern {
@@ -195,7 +199,10 @@ fn trend_extension(candles: &[Candle]) -> f64 {
 }
 
 fn trend_matches(direction: GapDirection, trend: i8) -> bool {
-    matches!((direction, trend), (GapDirection::Up, 1) | (GapDirection::Down, -1))
+    matches!(
+        (direction, trend),
+        (GapDirection::Up, 1) | (GapDirection::Down, -1)
+    )
 }
 
 fn gap_confidence(volume_ratio: f64) -> f64 {

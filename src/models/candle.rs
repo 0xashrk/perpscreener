@@ -1,7 +1,7 @@
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use std::fmt;
+use utoipa::ToSchema;
 
 /// Candle payload from Hyperliquid.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

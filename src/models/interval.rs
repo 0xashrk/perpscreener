@@ -113,8 +113,11 @@ impl FromStr for CandleInterval {
 }
 
 /// Convert a supported interval string to milliseconds.
+#[allow(dead_code)]
 pub fn interval_ms(interval: &str) -> Option<u64> {
-    CandleInterval::from_str(interval).ok().map(|interval| interval.ms())
+    CandleInterval::from_str(interval)
+        .ok()
+        .map(|interval| interval.ms())
 }
 
 fn invalid_interval_message() -> String {

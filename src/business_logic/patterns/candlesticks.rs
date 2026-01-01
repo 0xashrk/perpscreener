@@ -67,12 +67,18 @@ pub(super) fn avg_low(candles: &[Candle], window: usize, offset: usize) -> Optio
 
 pub(super) fn max_high(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {
     let slice = window_slice(candles, window, offset)?;
-    slice.iter().map(|c| c.high).max_by(|a, b| a.partial_cmp(b).unwrap())
+    slice
+        .iter()
+        .map(|c| c.high)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
 }
 
 pub(super) fn min_low(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {
     let slice = window_slice(candles, window, offset)?;
-    slice.iter().map(|c| c.low).min_by(|a, b| a.partial_cmp(b).unwrap())
+    slice
+        .iter()
+        .map(|c| c.low)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
 }
 
 pub(super) fn max_open(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {

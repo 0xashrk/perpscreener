@@ -1,19 +1,19 @@
-/// Candle normalization helpers shared across services.
-pub mod candles;
+/// Advanced pattern monitoring loop.
+pub mod advanced_pattern_monitor;
+/// Advanced pattern detection state store.
+pub mod advanced_pattern_state;
 /// Candle ingestion and cache updater.
 pub mod candle_ingestion;
 /// In-memory candle cache.
 pub mod candle_store;
-/// Core pattern detection state store.
-pub mod core_pattern_state;
-/// Advanced pattern detection state store.
-pub mod advanced_pattern_state;
-/// Advanced pattern monitoring loop.
-pub mod advanced_pattern_monitor;
-/// Core pattern monitoring loop.
-pub mod core_pattern_monitor;
+/// Candle normalization helpers shared across services.
+pub mod candles;
 /// Chart snapshot and streaming orchestration.
 pub mod chart;
+/// Core pattern monitoring loop.
+pub mod core_pattern_monitor;
+/// Core pattern detection state store.
+pub mod core_pattern_state;
 /// Shared feature precompute store.
 pub mod feature_store;
 /// Hyperliquid API client.

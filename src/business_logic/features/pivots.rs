@@ -99,7 +99,11 @@ mod tests {
 
         let pivots = detect_pivots(&candles, 1, 1);
 
-        assert!(pivots.iter().any(|p| p.kind == PivotKind::High && p.index == 2));
-        assert!(pivots.iter().any(|p| p.kind == PivotKind::Low && p.index == 4));
+        assert!(pivots
+            .iter()
+            .any(|p| p.kind == PivotKind::High && p.index == 2));
+        assert!(pivots
+            .iter()
+            .any(|p| p.kind == PivotKind::Low && p.index == 4));
     }
 }

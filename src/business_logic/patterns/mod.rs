@@ -1,10 +1,10 @@
+pub mod advanced;
+pub mod aggregation;
 pub mod candlesticks;
 pub mod candlesticks_bearish;
 pub mod candlesticks_bullish;
 pub mod chart_patterns;
 pub mod gaps;
-pub mod aggregation;
-pub mod advanced;
 
 use crate::models::patterns::{PatternClassification, PatternSignalType};
 

@@ -112,12 +112,17 @@ fn limit_per_group(
     detections: Vec<AdvancedPatternDetection>,
     limit: usize,
 ) -> Vec<AdvancedPatternDetection> {
-    let mut grouped: HashMap<(String, crate::models::interval::CandleInterval), Vec<AdvancedPatternDetection>> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (String, crate::models::interval::CandleInterval),
+        Vec<AdvancedPatternDetection>,
+    > = HashMap::new();
 
     for detection in detections {
         grouped
-            .entry((detection.detection.coin.clone(), detection.detection.interval))
+            .entry((
+                detection.detection.coin.clone(),
+                detection.detection.interval,
+            ))
             .or_default()
             .push(detection);
     }
@@ -133,7 +138,12 @@ fn limit_per_group(
         a.detection
             .coin
             .cmp(&b.detection.coin)
-            .then_with(|| a.detection.interval.as_str().cmp(b.detection.interval.as_str()))
+            .then_with(|| {
+                a.detection
+                    .interval
+                    .as_str()
+                    .cmp(b.detection.interval.as_str())
+            })
             .then_with(|| b.detection.detected_at_ms.cmp(&a.detection.detected_at_ms))
     });
 

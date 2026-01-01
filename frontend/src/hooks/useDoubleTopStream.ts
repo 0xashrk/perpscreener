@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { buildApiUrl } from "../services/url";
 import { startSseStream } from "../services/sse";
 import { parseDoubleTopSnapshot } from "../services/parsers";
-import { DoubleTopState } from "../types/doubleTop";
 import { StreamStatus } from "../types/stream";
 import { PatternState } from "../types/ui";
 import { formatDoubleTopState } from "../utils/format";
@@ -28,7 +27,7 @@ export const useDoubleTopStream = (tokens: string[]) => {
   );
 
   const tokenKey = useMemo(() => tokens.join(","), [tokens]);
-  const tokenSet = useMemo(() => new Set(tokens), [tokenKey]);
+  const tokenSet = useMemo(() => new Set(tokens), [tokens]);
 
   useEffect(() => {
     setPatternsByToken((prev) => {
@@ -38,7 +37,7 @@ export const useDoubleTopStream = (tokens: string[]) => {
       });
       return next;
     });
-  }, [tokenKey]);
+  }, [tokenKey, tokens]);
 
   useEffect(() => {
     const url = buildApiUrl("/double-top/stream", {});
@@ -73,7 +72,7 @@ export const useDoubleTopStream = (tokens: string[]) => {
     return () => {
       stop();
     };
-  }, [tokenKey, tokenSet]);
+  }, [tokenKey, tokenSet, tokens]);
 
   return { status, patternsByToken };
 };

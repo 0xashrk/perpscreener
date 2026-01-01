@@ -173,8 +173,8 @@ mod tests {
             notes: None,
         };
 
-        let detection = to_detection("BTC", CandleInterval::OneMinute, &candles, pattern)
-            .expect("detection");
+        let detection =
+            to_detection("BTC", CandleInterval::OneMinute, &candles, pattern).expect("detection");
         assert_eq!(detection.window_start_ms, 10);
         assert_eq!(detection.window_end_ms, 30);
     }

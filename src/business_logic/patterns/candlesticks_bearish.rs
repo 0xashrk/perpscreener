@@ -1,56 +1,102 @@
 use crate::models::candle::Candle;
 use crate::models::patterns::PatternClassification;
 
-use super::DetectedPattern;
 use super::candlesticks::{
     approx_eq, avg_high_low_diff, body, build_pattern, candle, max_high, max_open, range,
 };
+use super::DetectedPattern;
 
 pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     let mut results = Vec::new();
 
     if abandoned_baby(candles) {
-        results.push(build_pattern("Abandoned Baby", PatternClassification::Bearish, 3));
+        results.push(build_pattern(
+            "Abandoned Baby",
+            PatternClassification::Bearish,
+            3,
+        ));
     }
     if belt_hold(candles) {
-        results.push(build_pattern("Belt Hold", PatternClassification::Bearish, 4));
+        results.push(build_pattern(
+            "Belt Hold",
+            PatternClassification::Bearish,
+            4,
+        ));
     }
     if dark_cloud_cover(candles) {
-        results.push(build_pattern("Dark Cloud Cover", PatternClassification::Bearish, 2));
+        results.push(build_pattern(
+            "Dark Cloud Cover",
+            PatternClassification::Bearish,
+            2,
+        ));
     }
     if doji_gravestone(candles) {
-        results.push(build_pattern("Doji (Gravestone)", PatternClassification::Bearish, 1));
+        results.push(build_pattern(
+            "Doji (Gravestone)",
+            PatternClassification::Bearish,
+            1,
+        ));
     }
     if engulfing(candles) {
-        results.push(build_pattern("Engulfing", PatternClassification::Bearish, 2));
+        results.push(build_pattern(
+            "Engulfing",
+            PatternClassification::Bearish,
+            2,
+        ));
     }
     if evening_star(candles) {
-        results.push(build_pattern("Evening Star", PatternClassification::Bearish, 3));
+        results.push(build_pattern(
+            "Evening Star",
+            PatternClassification::Bearish,
+            3,
+        ));
     }
     if evening_doji_star(candles) {
-        results.push(build_pattern("Evening Doji Star", PatternClassification::Bearish, 3));
+        results.push(build_pattern(
+            "Evening Doji Star",
+            PatternClassification::Bearish,
+            3,
+        ));
     }
     if hanging_man(candles) {
-        results.push(build_pattern("Hanging Man", PatternClassification::Bearish, 1));
+        results.push(build_pattern(
+            "Hanging Man",
+            PatternClassification::Bearish,
+            1,
+        ));
     }
     if harami(candles) {
         results.push(build_pattern("Harami", PatternClassification::Bearish, 2));
     }
     if shooting_star(candles) {
-        results.push(build_pattern("Shooting Star", PatternClassification::Bearish, 1));
+        results.push(build_pattern(
+            "Shooting Star",
+            PatternClassification::Bearish,
+            1,
+        ));
     }
     if three_black_crows(candles) {
-        results.push(build_pattern("Three Black Crows", PatternClassification::Bearish, 3));
+        results.push(build_pattern(
+            "Three Black Crows",
+            PatternClassification::Bearish,
+            3,
+        ));
     }
     if tweezer_top(candles) {
-        results.push(build_pattern("Tweezer Top", PatternClassification::Bearish, 2));
+        results.push(build_pattern(
+            "Tweezer Top",
+            PatternClassification::Bearish,
+            2,
+        ));
     }
 
     results
 }
 
 fn abandoned_baby(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -147,7 +193,9 @@ fn engulfing(candles: &[Candle]) -> bool {
 }
 
 fn evening_star(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -169,7 +217,9 @@ fn evening_star(candles: &[Candle]) -> bool {
 }
 
 fn evening_doji_star(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -245,7 +295,9 @@ fn shooting_star(candles: &[Candle]) -> bool {
 }
 
 fn three_black_crows(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -306,6 +358,7 @@ mod tests {
         let detections = detect(&candles);
         assert!(detections
             .iter()
-            .any(|pattern| pattern.pattern == "Engulfing" && pattern.classification == PatternClassification::Bearish));
+            .any(|pattern| pattern.pattern == "Engulfing"
+                && pattern.classification == PatternClassification::Bearish));
     }
 }

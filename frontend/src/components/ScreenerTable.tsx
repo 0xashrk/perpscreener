@@ -55,12 +55,6 @@ export const ScreenerTable = ({
     hasData: false
   };
 
-  const emptyVwapCell: VwapCell = {
-    position: "above",
-    distancePct: 0,
-    hasData: false
-  };
-
   return (
     <section className="glass-panel rounded-3xl border border-white/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)]">
       <div className="flex items-center justify-between">

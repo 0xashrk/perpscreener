@@ -67,7 +67,7 @@ export const useVwapStreams = (tokens: string[], timeframes: VwapTimeframe[], in
       });
       return next;
     });
-  }, [tokenKey, timeframeKey]);
+  }, [tokenKey, timeframeKey, tokens, timeframes]);
 
   useEffect(() => {
     const stops = tokens.map((token) => {
@@ -127,7 +127,7 @@ export const useVwapStreams = (tokens: string[], timeframes: VwapTimeframe[], in
     return () => {
       stops.forEach((stop) => stop());
     };
-  }, [tokenKey, timeframeKey, interval]);
+  }, [tokenKey, timeframeKey, interval, tokens, timeframes]);
 
   return { statusByToken, vwapByToken };
 };

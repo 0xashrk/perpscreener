@@ -78,7 +78,10 @@ pub async fn get_patterns_stream(
     Ok(Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15))))
 }
 
-fn filter_detections(detections: Vec<PatternDetection>, query: &PatternQuery) -> Vec<PatternDetection> {
+fn filter_detections(
+    detections: Vec<PatternDetection>,
+    query: &PatternQuery,
+) -> Vec<PatternDetection> {
     let coins: Option<HashSet<String>> = query
         .coins
         .as_ref()
@@ -112,8 +115,10 @@ fn filter_detections(detections: Vec<PatternDetection>, query: &PatternQuery) ->
 }
 
 fn limit_per_group(detections: Vec<PatternDetection>, limit: usize) -> Vec<PatternDetection> {
-    let mut grouped: HashMap<(String, crate::models::interval::CandleInterval), Vec<PatternDetection>> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (String, crate::models::interval::CandleInterval),
+        Vec<PatternDetection>,
+    > = HashMap::new();
 
     for detection in detections {
         grouped

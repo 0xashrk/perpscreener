@@ -49,7 +49,11 @@ mod tests {
 
     #[test]
     fn computes_ranges_per_window() {
-        let candles = vec![candle(5.0, 1.0, 0), candle(6.0, 2.0, 1), candle(4.0, 0.5, 2)];
+        let candles = vec![
+            candle(5.0, 1.0, 0),
+            candle(6.0, 2.0, 1),
+            candle(4.0, 0.5, 2),
+        ];
         let ranges = compute_ranges(&candles, 2);
 
         assert_eq!(ranges.len(), 2);

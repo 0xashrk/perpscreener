@@ -176,7 +176,11 @@ fn latest_swing(pivots: &[Pivot]) -> Option<(f64, f64, TrendDirection)> {
     }
 
     let last = pivots.last()?;
-    let prev = pivots.iter().rev().skip(1).find(|pivot| pivot.kind != last.kind)?;
+    let prev = pivots
+        .iter()
+        .rev()
+        .skip(1)
+        .find(|pivot| pivot.kind != last.kind)?;
 
     match (prev.kind, last.kind) {
         (PivotKind::Low, PivotKind::High) => Some((prev.price, last.price, TrendDirection::Up)),

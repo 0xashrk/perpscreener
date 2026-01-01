@@ -6,7 +6,9 @@ use crate::business_logic::patterns::advanced::detect_advanced_patterns;
 use crate::business_logic::patterns::AdvancedDetectedPattern;
 use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
-use crate::models::patterns::{AdvancedPatternDetection, AdvancedPatternResponse, PatternDetection};
+use crate::models::patterns::{
+    AdvancedPatternDetection, AdvancedPatternResponse, PatternDetection,
+};
 use crate::services::advanced_pattern_state::SharedAdvancedPatternState;
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
 use crate::services::feature_store::SharedFeatureStore;

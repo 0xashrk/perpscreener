@@ -2,8 +2,10 @@ use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{PatternClassification, PatternSignalType};
 
-use crate::business_logic::features::{FeatureSnapshot, Pivot, PivotKind, Trendline, TrendlineKind};
 use super::DetectedPattern;
+use crate::business_logic::features::{
+    FeatureSnapshot, Pivot, PivotKind, Trendline, TrendlineKind,
+};
 
 const PIVOT_TOLERANCE_PCT: f64 = 0.02;
 const SHOULDER_TOLERANCE_PCT: f64 = 0.025;
@@ -31,7 +33,9 @@ pub fn detect_chart_patterns(
     results.extend(detect_wedges(features, interval, last_close));
     results.extend(detect_head_shoulders(features));
     results.extend(detect_double_triple(features));
-    results.extend(detect_flags_pennants(candles, features, interval, last_close));
+    results.extend(detect_flags_pennants(
+        candles, features, interval, last_close,
+    ));
     results.extend(detect_three_methods(candles));
     results.extend(detect_cup_handle(features));
 
@@ -147,26 +151,28 @@ fn detect_wedges(
     let support_slope = slope_per_bar(&support, interval);
     let resistance_slope = slope_per_bar(&resistance, interval);
 
-    if support_slope > 0.0 && resistance_slope > 0.0 {
-        if support_slope > resistance_slope + price_ref * WEDGE_SLOPE_DELTA {
-            results.push(chart_pattern(
-                "Rising Wedge",
-                PatternClassification::Bearish,
-                PatternSignalType::Reversal,
-                "chart_reversal",
-                10,
-            ));
-        }
-    } else if support_slope < 0.0 && resistance_slope < 0.0 {
-        if resistance_slope < support_slope - price_ref * WEDGE_SLOPE_DELTA {
-            results.push(chart_pattern(
-                "Falling Wedge",
-                PatternClassification::Bullish,
-                PatternSignalType::Reversal,
-                "chart_reversal",
-                10,
-            ));
-        }
+    if support_slope > 0.0
+        && resistance_slope > 0.0
+        && support_slope > resistance_slope + price_ref * WEDGE_SLOPE_DELTA
+    {
+        results.push(chart_pattern(
+            "Rising Wedge",
+            PatternClassification::Bearish,
+            PatternSignalType::Reversal,
+            "chart_reversal",
+            10,
+        ));
+    } else if support_slope < 0.0
+        && resistance_slope < 0.0
+        && resistance_slope < support_slope - price_ref * WEDGE_SLOPE_DELTA
+    {
+        results.push(chart_pattern(
+            "Falling Wedge",
+            PatternClassification::Bullish,
+            PatternSignalType::Reversal,
+            "chart_reversal",
+            10,
+        ));
     }
 
     results
@@ -345,24 +351,22 @@ fn detect_flags_pennants(
                 10,
             ));
         }
-    } else {
-        if support_slope > 0.0 && resistance_slope > 0.0 {
-            results.push(chart_pattern(
-                "Bear Flag",
-                PatternClassification::Bearish,
-                PatternSignalType::Continuation,
-                "chart_continuation",
-                10,
-            ));
-        } else if support_slope > 0.0 && resistance_slope < 0.0 {
-            results.push(chart_pattern(
-                "Bear Pennant",
-                PatternClassification::Bearish,
-                PatternSignalType::Continuation,
-                "chart_continuation",
-                10,
-            ));
-        }
+    } else if support_slope > 0.0 && resistance_slope > 0.0 {
+        results.push(chart_pattern(
+            "Bear Flag",
+            PatternClassification::Bearish,
+            PatternSignalType::Continuation,
+            "chart_continuation",
+            10,
+        ));
+    } else if support_slope > 0.0 && resistance_slope < 0.0 {
+        results.push(chart_pattern(
+            "Bear Pennant",
+            PatternClassification::Bearish,
+            PatternSignalType::Continuation,
+            "chart_continuation",
+            10,
+        ));
     }
 
     results
@@ -396,16 +400,22 @@ fn rising_three_methods(candles: &[Candle]) -> bool {
         return false;
     }
     let c = candle_at(candles, 0);
-    let c1 = candle_at(candles, 1);
     let c2 = candle_at(candles, 2);
     let c3 = candle_at(candles, 3);
     let c4 = candle_at(candles, 4);
 
-    let Some(c) = c else { return false; };
-    let Some(c1) = c1 else { return false; };
-    let Some(c2) = c2 else { return false; };
-    let Some(c3) = c3 else { return false; };
-    let Some(c4) = c4 else { return false; };
+    let Some(c) = c else {
+        return false;
+    };
+    let Some(c2) = c2 else {
+        return false;
+    };
+    let Some(c3) = c3 else {
+        return false;
+    };
+    let Some(c4) = c4 else {
+        return false;
+    };
 
     let Some(avg_range_20) = avg_range(candles, 20, 4) else {
         return false;
@@ -434,11 +444,21 @@ fn falling_three_methods(candles: &[Candle]) -> bool {
     let c3 = candle_at(candles, 3);
     let c4 = candle_at(candles, 4);
 
-    let Some(c) = c else { return false; };
-    let Some(c1) = c1 else { return false; };
-    let Some(c2) = c2 else { return false; };
-    let Some(c3) = c3 else { return false; };
-    let Some(c4) = c4 else { return false; };
+    let Some(c) = c else {
+        return false;
+    };
+    let Some(c1) = c1 else {
+        return false;
+    };
+    let Some(c2) = c2 else {
+        return false;
+    };
+    let Some(c3) = c3 else {
+        return false;
+    };
+    let Some(c4) = c4 else {
+        return false;
+    };
 
     body(c4) > 0.5 * range(c4)
         && c4.close < c4.open
@@ -462,7 +482,7 @@ fn detect_cup_handle(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
     let highs = last_pivots(&features.pivots, PivotKind::High, 2);
     let lows = last_pivots(&features.pivots, PivotKind::Low, 2);
 
-    if highs.len() == 2 && lows.len() >= 1 {
+    if highs.len() == 2 && !lows.is_empty() {
         let left = highs[0];
         let right = highs[1];
         let cup_low = lows[0];
@@ -560,7 +580,10 @@ fn avg_range(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {
 
 fn max_high(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {
     let slice = window_slice(candles, window, offset)?;
-    slice.iter().map(|c| c.high).max_by(|a, b| a.partial_cmp(b).unwrap())
+    slice
+        .iter()
+        .map(|c| c.high)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
 }
 
 fn window_slice(candles: &[Candle], window: usize, offset: usize) -> Option<&[Candle]> {

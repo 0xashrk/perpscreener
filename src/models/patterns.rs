@@ -229,8 +229,7 @@ fn parse_interval_list(input: &str) -> Result<Vec<CandleInterval>, String> {
             continue;
         }
 
-        let interval = CandleInterval::from_str(trimmed)
-            .map_err(|_| invalid_interval_message())?;
+        let interval = CandleInterval::from_str(trimmed).map_err(|_| invalid_interval_message())?;
         if seen.insert(interval) {
             intervals.push(interval);
         }
@@ -284,6 +283,9 @@ mod tests {
     #[test]
     fn interval_list_parses_known_values() {
         let parsed = parse_interval_list("1m,15m").expect("interval list");
-        assert_eq!(parsed, vec![CandleInterval::OneMinute, CandleInterval::FifteenMinutes]);
+        assert_eq!(
+            parsed,
+            vec![CandleInterval::OneMinute, CandleInterval::FifteenMinutes]
+        );
     }
 }

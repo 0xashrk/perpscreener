@@ -51,7 +51,7 @@ export const usePatternSnapshot = (query: PatternSnapshotQuery): PatternSnapshot
     return () => {
       active = false;
     };
-  }, [queryKey]);
+  }, [queryKey, query]);
 
   return state;
 };

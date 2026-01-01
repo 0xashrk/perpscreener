@@ -25,6 +25,7 @@ impl Default for FeatureConfig {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FeatureSnapshot {
     pub as_of_ms: u64,
@@ -56,6 +57,7 @@ impl FeatureSnapshot {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CandleBodyRatio {
     pub open_time: u64,
@@ -71,6 +73,7 @@ pub enum GapDirection {
     Down,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Gap {
     pub open_time: u64,
@@ -102,6 +105,7 @@ pub enum TrendlineKind {
     Resistance,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Trendline {
     pub kind: TrendlineKind,
@@ -113,6 +117,7 @@ pub struct Trendline {
     pub intercept: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PriceRange {
     pub start_time: u64,
@@ -122,24 +127,28 @@ pub struct PriceRange {
     pub midpoint: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AtrPoint {
     pub close_time: u64,
     pub value: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AtrSnapshot {
     pub period: usize,
     pub values: Vec<AtrPoint>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct VolatilityPoint {
     pub close_time: u64,
     pub value: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct VolatilitySnapshot {
     pub window: usize,

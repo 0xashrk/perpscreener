@@ -21,6 +21,7 @@ impl CandleKey {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CandleUpdateSummary {
     pub added: usize,

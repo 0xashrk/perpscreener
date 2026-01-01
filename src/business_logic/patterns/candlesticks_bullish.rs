@@ -1,10 +1,10 @@
 use crate::models::candle::Candle;
 use crate::models::patterns::PatternClassification;
 
-use super::DetectedPattern;
 use super::candlesticks::{
     approx_eq, avg_high_low_diff, body, build_pattern, candle, min_low, min_open, range, stochastic,
 };
+use super::DetectedPattern;
 
 const STOCH_WINDOW: usize = 14;
 
@@ -12,22 +12,46 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     let mut results = Vec::new();
 
     if abandoned_baby(candles) {
-        results.push(build_pattern("Abandoned Baby", PatternClassification::Bullish, 3));
+        results.push(build_pattern(
+            "Abandoned Baby",
+            PatternClassification::Bullish,
+            3,
+        ));
     }
     if belt_hold(candles) {
-        results.push(build_pattern("Belt Hold", PatternClassification::Bullish, 4));
+        results.push(build_pattern(
+            "Belt Hold",
+            PatternClassification::Bullish,
+            4,
+        ));
     }
     if breakaway(candles) {
-        results.push(build_pattern("Breakaway", PatternClassification::Bullish, 5));
+        results.push(build_pattern(
+            "Breakaway",
+            PatternClassification::Bullish,
+            5,
+        ));
     }
     if doji_dragonfly(candles) {
-        results.push(build_pattern("Doji (Dragonfly)", PatternClassification::Bullish, 1));
+        results.push(build_pattern(
+            "Doji (Dragonfly)",
+            PatternClassification::Bullish,
+            1,
+        ));
     }
     if doji_star(candles) {
-        results.push(build_pattern("Doji Star", PatternClassification::Bullish, 2));
+        results.push(build_pattern(
+            "Doji Star",
+            PatternClassification::Bullish,
+            2,
+        ));
     }
     if engulfing(candles) {
-        results.push(build_pattern("Engulfing", PatternClassification::Bullish, 2));
+        results.push(build_pattern(
+            "Engulfing",
+            PatternClassification::Bullish,
+            2,
+        ));
     }
     if hammer(candles) {
         results.push(build_pattern("Hammer", PatternClassification::Bullish, 1));
@@ -36,29 +60,55 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
         results.push(build_pattern("Harami", PatternClassification::Bullish, 2));
     }
     if inverted_hammer(candles) {
-        results.push(build_pattern("Inverted Hammer", PatternClassification::Bullish, 2));
+        results.push(build_pattern(
+            "Inverted Hammer",
+            PatternClassification::Bullish,
+            2,
+        ));
     }
     if morning_star(candles) {
-        results.push(build_pattern("Morning Star", PatternClassification::Bullish, 3));
+        results.push(build_pattern(
+            "Morning Star",
+            PatternClassification::Bullish,
+            3,
+        ));
     }
     if morning_doji_star(candles) {
-        results.push(build_pattern("Morning Doji Star", PatternClassification::Bullish, 3));
+        results.push(build_pattern(
+            "Morning Doji Star",
+            PatternClassification::Bullish,
+            3,
+        ));
     }
     if piercing_line(candles) {
-        results.push(build_pattern("Piercing Line", PatternClassification::Bullish, 2));
+        results.push(build_pattern(
+            "Piercing Line",
+            PatternClassification::Bullish,
+            2,
+        ));
     }
     if three_white_soldiers(candles) {
-        results.push(build_pattern("Three White Soldiers", PatternClassification::Bullish, 4));
+        results.push(build_pattern(
+            "Three White Soldiers",
+            PatternClassification::Bullish,
+            4,
+        ));
     }
     if tweezer_bottom(candles) {
-        results.push(build_pattern("Tweezer Bottom", PatternClassification::Bullish, 2));
+        results.push(build_pattern(
+            "Tweezer Bottom",
+            PatternClassification::Bullish,
+            2,
+        ));
     }
 
     results
 }
 
 fn abandoned_baby(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -254,7 +304,9 @@ fn inverted_hammer(candles: &[Candle]) -> bool {
 }
 
 fn morning_star(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -269,7 +321,9 @@ fn morning_star(candles: &[Candle]) -> bool {
 }
 
 fn morning_doji_star(candles: &[Candle]) -> bool {
-    let (Some(c), Some(c1), Some(c2)) = (candle(candles, 0), candle(candles, 1), candle(candles, 2)) else {
+    let (Some(c), Some(c1), Some(c2)) =
+        (candle(candles, 0), candle(candles, 1), candle(candles, 2))
+    else {
         return false;
     };
 
@@ -379,6 +433,7 @@ mod tests {
         let detections = detect(&candles);
         assert!(detections
             .iter()
-            .any(|pattern| pattern.pattern == "Engulfing" && pattern.classification == PatternClassification::Bullish));
+            .any(|pattern| pattern.pattern == "Engulfing"
+                && pattern.classification == PatternClassification::Bullish));
     }
 }

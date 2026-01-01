@@ -10,8 +10,8 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::errors::AppError;
-use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
 use crate::handlers::query::ValidatedQuery;
+use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
 use crate::services::chart::ChartService;
 use crate::state::AppState;
 

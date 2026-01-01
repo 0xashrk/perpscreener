@@ -15,9 +15,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::features::FeatureConfig;
+use crate::handlers::advanced_patterns::{get_advanced_patterns, get_advanced_patterns_stream};
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
-use crate::handlers::advanced_patterns::{get_advanced_patterns, get_advanced_patterns_stream};
 use crate::handlers::health::health;
 use crate::handlers::patterns::{get_patterns, get_patterns_stream};
 use crate::handlers::vwap::{get_vwap_snapshot, get_vwap_stream};
@@ -27,17 +27,19 @@ use crate::models::double_top::{CoinPatternStatus, DoubleTopResponse};
 use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
-    AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList, PatternClassification,
-    PatternDetection, PatternQuery, PatternResponse, PatternSignalType, PatternSummary,
-    PatternSummarySignal,
+    AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList,
+    PatternClassification, PatternDetection, PatternQuery, PatternResponse, PatternSignalType,
+    PatternSummary, PatternSummarySignal,
 };
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
+use crate::services::advanced_pattern_monitor::{
+    AdvancedPatternMonitor, AdvancedPatternMonitorConfig,
+};
+use crate::services::advanced_pattern_state::AdvancedPatternStateInner;
 use crate::services::candle_ingestion::{CandleIngestionConfig, CandleIngestionService};
 use crate::services::candle_store::CandleStoreInner;
 use crate::services::core_pattern_monitor::{CorePatternMonitor, CorePatternMonitorConfig};
 use crate::services::core_pattern_state::CorePatternStateInner;
-use crate::services::advanced_pattern_monitor::{AdvancedPatternMonitor, AdvancedPatternMonitorConfig};
-use crate::services::advanced_pattern_state::AdvancedPatternStateInner;
 use crate::services::feature_store::FeatureStoreInner;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::monitor::MonitorService;
@@ -145,7 +147,10 @@ async fn main() {
         candle_store.clone(),
         feature_store.clone(),
         advanced_pattern_state.clone(),
-        AdvancedPatternMonitorConfig::new(ingestion_config.coins.clone(), ingestion_config.intervals.clone()),
+        AdvancedPatternMonitorConfig::new(
+            ingestion_config.coins.clone(),
+            ingestion_config.intervals.clone(),
+        ),
     );
 
     tokio::spawn(async move {

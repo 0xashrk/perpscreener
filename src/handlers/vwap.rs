@@ -1,6 +1,12 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use crate::errors::AppError;
+use crate::handlers::query::ValidatedQuery;
+use crate::models::interval::CandleInterval;
+use crate::models::vwap::{VwapSnapshot, VwapStreamQuery, VwapTimeframe};
+use crate::services::vwap::{ensure_timeframes_covered, VwapError, VwapService};
+use crate::state::AppState;
 use axum::{
     extract::State,
     http::HeaderMap,
@@ -10,12 +16,6 @@ use axum::{
 use serde::Serialize;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use crate::errors::AppError;
-use crate::handlers::query::ValidatedQuery;
-use crate::models::interval::CandleInterval;
-use crate::models::vwap::{VwapSnapshot, VwapStreamQuery, VwapTimeframe};
-use crate::services::vwap::{ensure_timeframes_covered, VwapError, VwapService};
-use crate::state::AppState;
 
 const SNAPSHOT_INTERVAL_SECS: u64 = 60;
 const HEARTBEAT_THRESHOLD_MS: u64 = 90_000;
@@ -82,12 +82,7 @@ pub async fn get_vwap_snapshot(
 
     let service = VwapService::new(state.hyperliquid.clone());
     let snapshot = service
-        .fetch_snapshot(
-            &query.coin,
-            interval,
-            timeframes,
-            query.bands,
-        )
+        .fetch_snapshot(&query.coin, interval, timeframes, query.bands)
         .await
         .map_err(map_vwap_error)?;
 
@@ -233,16 +228,11 @@ fn parse_last_event_id(headers: &HeaderMap) -> Option<u64> {
 
 fn map_vwap_error(error: VwapError) -> AppError {
     match error {
-        VwapError::InvalidCoin { coin } => {
-            AppError::Validation(format!("invalid coin: {}", coin))
+        VwapError::InvalidCoin { coin } => AppError::Validation(format!("invalid coin: {}", coin)),
+        VwapError::NoClosedCandles => AppError::Upstream("no closed candles available".to_string()),
+        VwapError::NoVwapData { timeframe } => {
+            AppError::Upstream(format!("no vwap data for timeframe {}", timeframe))
         }
-        VwapError::NoClosedCandles => {
-            AppError::Upstream("no closed candles available".to_string())
-        }
-        VwapError::NoVwapData { timeframe } => AppError::Upstream(format!(
-            "no vwap data for timeframe {}",
-            timeframe
-        )),
         VwapError::Upstream { message } => AppError::Upstream(message),
     }
 }
@@ -271,8 +261,8 @@ fn resolve_interval(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::HeaderValue;
     use crate::models::vwap::TimeframeList;
+    use axum::http::HeaderValue;
 
     #[test]
     fn parse_last_event_id_reads_header() {
@@ -292,7 +282,11 @@ mod tests {
     fn should_emit_heartbeat_after_threshold() {
         let now_ms = 100_000;
         assert!(should_emit_heartbeat(0, 0, now_ms));
-        assert!(!should_emit_heartbeat(now_ms - 60_000, now_ms - 60_000, now_ms));
+        assert!(!should_emit_heartbeat(
+            now_ms - 60_000,
+            now_ms - 60_000,
+            now_ms
+        ));
         assert!(!should_emit_heartbeat(0, 50_000, now_ms));
     }
 

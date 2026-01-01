@@ -4,8 +4,8 @@ use std::time::Duration;
 use tokio::time::interval;
 
 use crate::models::interval::CandleInterval;
-use crate::services::candles::normalize_candles;
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
+use crate::services::candles::normalize_candles;
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
 

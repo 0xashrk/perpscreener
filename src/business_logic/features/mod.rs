@@ -10,10 +10,7 @@ pub mod types;
 
 use crate::models::candle::Candle;
 
-pub use types::{
-    AtrPoint, AtrSnapshot, CandleBodyRatio, FeatureConfig, FeatureSnapshot, Gap, GapDirection,
-    Pivot, PivotKind, PriceRange, Trendline, TrendlineKind, VolatilityPoint, VolatilitySnapshot,
-};
+pub use types::{FeatureConfig, FeatureSnapshot, Pivot, PivotKind, Trendline, TrendlineKind};
 
 pub fn compute_features(candles: &[Candle], config: &FeatureConfig) -> FeatureSnapshot {
     if candles.is_empty() {

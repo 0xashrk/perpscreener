@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
-    PatternClassification, PatternDetection, PatternSignalType, PatternSummary, PatternSummarySignal,
+    PatternClassification, PatternDetection, PatternSignalType, PatternSummary,
+    PatternSummarySignal,
 };
 
 #[derive(Debug, Clone)]
@@ -23,7 +24,10 @@ impl PatternScoreWeights {
     }
 
     pub fn timeframe_weight(&self, interval: CandleInterval) -> f64 {
-        self.timeframe_weights.get(&interval).copied().unwrap_or(1.0)
+        self.timeframe_weights
+            .get(&interval)
+            .copied()
+            .unwrap_or(1.0)
     }
 
     pub fn signal_weight(&self, signal_type: PatternSignalType) -> f64 {
