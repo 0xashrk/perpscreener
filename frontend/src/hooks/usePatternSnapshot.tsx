@@ -25,12 +25,16 @@ export const usePatternSnapshot = (query: PatternSnapshotQuery): PatternSnapshot
   });
 
   const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  const parsedQuery = useMemo(
+    () => JSON.parse(queryKey) as PatternSnapshotQuery,
+    [queryKey]
+  );
 
   useEffect(() => {
     let active = true;
     setState((prev) => ({ ...prev, status: "loading", error: "" }));
 
-    fetchPatternSnapshot(query)
+    fetchPatternSnapshot(parsedQuery)
       .then((data) => {
         if (!active) {
           return;
@@ -51,7 +55,7 @@ export const usePatternSnapshot = (query: PatternSnapshotQuery): PatternSnapshot
     return () => {
       active = false;
     };
-  }, [queryKey, query]);
+  }, [parsedQuery]);
 
   return state;
 };

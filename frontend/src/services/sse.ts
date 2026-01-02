@@ -65,8 +65,17 @@ export const startSseStream = (url: string, handlers: SseHandlers): (() => void)
       scheduleReconnect();
     };
 
+    const handleHeartbeat = () => {
+      if (currentSource !== source) {
+        return;
+      }
+      retryDelay = BASE_DELAY_MS;
+      handlers.onStatus("open");
+    };
+
     currentSource.addEventListener("open", handleOpen);
     currentSource.addEventListener("snapshot", handleSnapshot);
+    currentSource.addEventListener("heartbeat", handleHeartbeat);
     currentSource.addEventListener("error", handleError);
   };
 

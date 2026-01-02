@@ -100,13 +100,18 @@ pub(super) fn min_open(candles: &[Candle], window: usize, offset: usize) -> Opti
 pub(super) fn stochastic(candles: &[Candle], window: usize, offset: usize) -> Option<f64> {
     let slice = window_slice(candles, window, offset)?;
     let last = slice.last()?;
+    if !last.close.is_finite() {
+        return None;
+    }
     let low = slice
         .iter()
         .map(|c| c.low)
+        .filter(|value| value.is_finite())
         .min_by(|a, b| a.partial_cmp(b).unwrap())?;
     let high = slice
         .iter()
         .map(|c| c.high)
+        .filter(|value| value.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap())?;
     if (high - low).abs() <= f64::EPSILON {
         return None;

@@ -64,7 +64,7 @@ export const AdvancedPatternList = ({ detections, status, error }: AdvancedPatte
               <span className="font-semibold">{detection.coin}</span>
               <span>{detection.interval}</span>
               <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                {detection.method.replace("_", " ")}
+                {detection.method.replaceAll("_", " ")}
               </span>
               <span className="font-semibold">
                 {Math.round(detection.confidence * 100)}%

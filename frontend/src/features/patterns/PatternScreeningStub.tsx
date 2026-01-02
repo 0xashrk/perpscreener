@@ -1,7 +1,12 @@
 import { StreamStatus } from "../../types/stream";
 
 type PatternScreeningStubProps = {
-  signals: Array<{ pattern: string }>;
+  signals: Array<{
+    pattern: string;
+    coin: string;
+    interval: string;
+    detectedAtMs: number;
+  }>;
   status: StreamStatus;
   lastUpdatedMs: number;
 };
@@ -41,7 +46,7 @@ export const PatternScreeningStub = ({
           <div className="relative h-56 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100">
             {signals.map((signal, index) => (
               <span
-                key={`${signal.pattern}-${index}`}
+                key={`${signal.coin}-${signal.interval}-${signal.pattern}-${signal.detectedAtMs}`}
                 className="absolute rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white shadow-lg"
                 style={{
                   top: `${18 + index * 24}%`,

@@ -103,6 +103,9 @@ fn detect_gap(candles: &[Candle]) -> Option<(GapInfo, GapDirection)> {
 
     let prev = candles.get(candles.len() - 2)?;
     let current = candles.last()?;
+    if prev.close.abs() <= f64::EPSILON {
+        return None;
+    }
 
     if current.low > prev.high {
         let gap_size = current.low - prev.high;
@@ -152,11 +155,13 @@ fn is_range_bound(candles: &[Candle]) -> bool {
     let high = slice
         .iter()
         .map(|c| c.high)
+        .filter(|value| value.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or(0.0);
     let low = slice
         .iter()
         .map(|c| c.low)
+        .filter(|value| value.is_finite())
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or(0.0);
     let avg_close = slice.iter().map(|c| c.close).sum::<f64>() / slice.len() as f64;

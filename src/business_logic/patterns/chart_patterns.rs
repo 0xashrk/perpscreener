@@ -427,7 +427,7 @@ fn rising_three_methods(candles: &[Candle]) -> bool {
     10.0 * (c4.close - c4.open) >= 7.0 * range(c4)
         && range(c4) >= avg_range_20
         && approx_eq(c4.high, max_high_10)
-        && 2.0 * c3.close == 2.0 * c4.open + c4.high - c4.low
+        && approx_eq(2.0 * c3.close, 2.0 * c4.open + c4.high - c4.low)
         && c2.open > c4.open
         && c.open > c4.open
         && 5.0 * c.open <= 3.0 * c4.high + 2.0 * c4.low

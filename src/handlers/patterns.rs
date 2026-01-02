@@ -82,10 +82,12 @@ fn filter_detections(
     detections: Vec<PatternDetection>,
     query: &PatternQuery,
 ) -> Vec<PatternDetection> {
-    let coins: Option<HashSet<String>> = query
-        .coins
-        .as_ref()
-        .map(|list| list.as_slice().iter().cloned().collect());
+    let coins: Option<HashSet<String>> = query.coins.as_ref().map(|list| {
+        list.as_slice()
+            .iter()
+            .map(|coin| coin.to_uppercase())
+            .collect()
+    });
     let intervals: Option<HashSet<_>> = query
         .intervals
         .as_ref()

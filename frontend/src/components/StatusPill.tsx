@@ -5,7 +5,7 @@ export type StatusTone = "positive" | "negative" | "neutral" | "warning";
 type StatusPillProps = {
   label: ReactNode;
   tone: StatusTone;
-  className: string;
+  className?: string;
 };
 
 const toneClasses: Record<StatusTone, string> = {
@@ -15,7 +15,7 @@ const toneClasses: Record<StatusTone, string> = {
   warning: "bg-amber-100 text-amber-800 border-amber-200"
 };
 
-export const StatusPill = ({ label, tone, className }: StatusPillProps) => {
+export const StatusPill = ({ label, tone, className = "" }: StatusPillProps) => {
   return (
     <span
       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${toneClasses[tone]} ${className}`}
