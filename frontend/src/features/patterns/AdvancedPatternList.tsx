@@ -7,6 +7,8 @@ type AdvancedPatternListProps = {
   error: string;
 };
 
+const formatConfidence = (value: number) => `${(value * 100).toFixed(1)}%`;
+
 export const AdvancedPatternList = ({ detections, status, error }: AdvancedPatternListProps) => {
   if (status === "connecting" || status === "reconnecting") {
     return (
@@ -72,7 +74,7 @@ export const AdvancedPatternList = ({ detections, status, error }: AdvancedPatte
                   {detection.method.replaceAll("_", " ")}
                 </span>
                 <span className="font-semibold" title={confidenceTitle || undefined}>
-                  {Math.round(detection.confidence * 100)}%
+                  {formatConfidence(detection.confidence)}
                 </span>
               </div>
             );

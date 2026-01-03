@@ -25,6 +25,8 @@ const formatTimestamp = (value: number) => {
   return new Date(value).toLocaleString();
 };
 
+const formatConfidence = (value: number) => `${(value * 100).toFixed(1)}%`;
+
 export const PatternList = ({ detections, status, error }: PatternListProps) => {
   if (status === "connecting" || status === "reconnecting") {
     return (
@@ -94,7 +96,7 @@ export const PatternList = ({ detections, status, error }: PatternListProps) => 
                   {detection.classification}
                 </span>
                 <span className="font-semibold" title={note || undefined}>
-                  {Math.round(detection.confidence * 100)}%
+                  {formatConfidence(detection.confidence)}
                 </span>
               </div>
             );
