@@ -27,7 +27,7 @@
 | 4c | Frontend aggregation dashboard + weighting controls + tests | Completed |
 | 5 | Confidence scoring calibration (core + advanced) | In Progress |
 | 5a | Core confidence heuristics (candlesticks, gaps, chart patterns) + tests | Completed |
-| 5b | Advanced confidence heuristics (Fibonacci, Elliott, fractals) + tests | Pending |
+| 5b | Advanced confidence heuristics (Fibonacci, Elliott, fractals) + tests | Completed |
 | 5c | Frontend confidence context (tooltips/notes) + tests | Pending |
 
 ---
