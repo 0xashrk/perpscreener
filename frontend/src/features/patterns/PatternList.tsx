@@ -70,29 +70,35 @@ export const PatternList = ({ detections, status, error }: PatternListProps) => 
           <span>Confidence</span>
         </div>
         <div className="max-h-[420px] divide-y divide-slate-100 overflow-y-auto text-sm text-slate-700">
-          {detections.map((detection, index) => (
-            <div
-              key={`${detection.coin}-${detection.interval}-${detection.pattern}-${index}`}
-              className="grid grid-cols-[1.3fr_0.6fr_0.6fr_0.6fr_0.7fr] gap-2 px-4 py-3"
-            >
-              <div className="flex flex-col">
-                <span className="font-semibold text-slate-900">{detection.pattern}</span>
-                <span className="text-xs text-slate-400">{formatTimestamp(detection.detectedAtMs)}</span>
-              </div>
-              <span className="font-semibold">{detection.coin}</span>
-              <span>{detection.interval}</span>
-              <span
-                className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${classificationStyle(
-                  detection.classification
-                )}`}
+          {detections.map((detection, index) => {
+            const note = detection.notes.trim();
+            const timestamp = formatTimestamp(detection.detectedAtMs);
+            return (
+              <div
+                key={`${detection.coin}-${detection.interval}-${detection.pattern}-${index}`}
+                className="grid grid-cols-[1.3fr_0.6fr_0.6fr_0.6fr_0.7fr] gap-2 px-4 py-3"
               >
-                {detection.classification}
-              </span>
-              <span className="font-semibold">
-                {Math.round(detection.confidence * 100)}%
-              </span>
-            </div>
-          ))}
+                <div className="flex flex-col">
+                  <span className="font-semibold text-slate-900">{detection.pattern}</span>
+                  <span className="text-xs text-slate-400">
+                    {note ? `${timestamp} · ${note}` : timestamp}
+                  </span>
+                </div>
+                <span className="font-semibold">{detection.coin}</span>
+                <span>{detection.interval}</span>
+                <span
+                  className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${classificationStyle(
+                    detection.classification
+                  )}`}
+                >
+                  {detection.classification}
+                </span>
+                <span className="font-semibold" title={note || undefined}>
+                  {Math.round(detection.confidence * 100)}%
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

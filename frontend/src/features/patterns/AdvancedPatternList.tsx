@@ -52,25 +52,31 @@ export const AdvancedPatternList = ({ detections, status, error }: AdvancedPatte
           <span>Confidence</span>
         </div>
         <div className="max-h-[420px] divide-y divide-slate-100 overflow-y-auto text-sm text-slate-700">
-          {detections.map((detection, index) => (
-            <div
-              key={`${detection.coin}-${detection.interval}-${detection.pattern}-${index}`}
-              className="grid grid-cols-[1.2fr_0.5fr_0.6fr_0.7fr_0.6fr] gap-2 px-4 py-3"
-            >
-              <div className="flex flex-col">
-                <span className="font-semibold text-slate-900">{detection.pattern}</span>
-                <span className="text-xs text-slate-400">{detection.basis}</span>
+          {detections.map((detection, index) => {
+            const assumptionLabel = detection.assumptions.join(", ");
+            const confidenceTitle = [detection.basis, assumptionLabel]
+              .filter((value) => value.length > 0)
+              .join(" · ");
+            return (
+              <div
+                key={`${detection.coin}-${detection.interval}-${detection.pattern}-${index}`}
+                className="grid grid-cols-[1.2fr_0.5fr_0.6fr_0.7fr_0.6fr] gap-2 px-4 py-3"
+              >
+                <div className="flex flex-col">
+                  <span className="font-semibold text-slate-900">{detection.pattern}</span>
+                  <span className="text-xs text-slate-400">{detection.basis}</span>
+                </div>
+                <span className="font-semibold">{detection.coin}</span>
+                <span>{detection.interval}</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  {detection.method.replaceAll("_", " ")}
+                </span>
+                <span className="font-semibold" title={confidenceTitle || undefined}>
+                  {Math.round(detection.confidence * 100)}%
+                </span>
               </div>
-              <span className="font-semibold">{detection.coin}</span>
-              <span>{detection.interval}</span>
-              <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                {detection.method.replaceAll("_", " ")}
-              </span>
-              <span className="font-semibold">
-                {Math.round(detection.confidence * 100)}%
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
