@@ -13,6 +13,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
 
     if abandoned_baby(candles) {
         results.push(build_pattern(
+            candles,
             "Abandoned Baby",
             PatternClassification::Bullish,
             3,
@@ -20,6 +21,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if belt_hold(candles) {
         results.push(build_pattern(
+            candles,
             "Belt Hold",
             PatternClassification::Bullish,
             4,
@@ -27,6 +29,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if breakaway(candles) {
         results.push(build_pattern(
+            candles,
             "Breakaway",
             PatternClassification::Bullish,
             5,
@@ -34,6 +37,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if doji_dragonfly(candles) {
         results.push(build_pattern(
+            candles,
             "Doji (Dragonfly)",
             PatternClassification::Bullish,
             1,
@@ -41,6 +45,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if doji_star(candles) {
         results.push(build_pattern(
+            candles,
             "Doji Star",
             PatternClassification::Bullish,
             2,
@@ -48,19 +53,21 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if engulfing(candles) {
         results.push(build_pattern(
+            candles,
             "Engulfing",
             PatternClassification::Bullish,
             2,
         ));
     }
     if hammer(candles) {
-        results.push(build_pattern("Hammer", PatternClassification::Bullish, 1));
+        results.push(build_pattern(candles, "Hammer", PatternClassification::Bullish, 1));
     }
     if harami(candles) {
-        results.push(build_pattern("Harami", PatternClassification::Bullish, 2));
+        results.push(build_pattern(candles, "Harami", PatternClassification::Bullish, 2));
     }
     if inverted_hammer(candles) {
         results.push(build_pattern(
+            candles,
             "Inverted Hammer",
             PatternClassification::Bullish,
             2,
@@ -68,6 +75,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if morning_star(candles) {
         results.push(build_pattern(
+            candles,
             "Morning Star",
             PatternClassification::Bullish,
             3,
@@ -75,6 +83,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if morning_doji_star(candles) {
         results.push(build_pattern(
+            candles,
             "Morning Doji Star",
             PatternClassification::Bullish,
             3,
@@ -82,6 +91,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if piercing_line(candles) {
         results.push(build_pattern(
+            candles,
             "Piercing Line",
             PatternClassification::Bullish,
             2,
@@ -89,6 +99,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if three_white_soldiers(candles) {
         results.push(build_pattern(
+            candles,
             "Three White Soldiers",
             PatternClassification::Bullish,
             4,
@@ -96,6 +107,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if tweezer_bottom(candles) {
         results.push(build_pattern(
+            candles,
             "Tweezer Bottom",
             PatternClassification::Bullish,
             2,

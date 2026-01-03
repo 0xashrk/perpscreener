@@ -77,7 +77,7 @@ pub fn detect_gap_patterns(candles: &[Candle]) -> Vec<DetectedPattern> {
         category: "gap",
         classification,
         signal_type,
-        confidence: gap_confidence(volume_ratio),
+        confidence: gap_confidence(volume_ratio, gap.percent),
         window: 2,
         notes: Some(format!("gap_pct={:.2}%", gap.percent * 100.0)),
     });
@@ -210,8 +210,8 @@ fn trend_matches(direction: GapDirection, trend: i8) -> bool {
     )
 }
 
-fn gap_confidence(volume_ratio: f64) -> f64 {
-    if volume_ratio >= EXHAUSTION_VOLUME {
+fn gap_confidence(volume_ratio: f64, gap_percent: f64) -> f64 {
+    let base = if volume_ratio >= EXHAUSTION_VOLUME {
         0.8
     } else if volume_ratio >= BREAKAWAY_VOLUME {
         0.7
@@ -219,7 +219,10 @@ fn gap_confidence(volume_ratio: f64) -> f64 {
         0.65
     } else {
         0.6
-    }
+    };
+
+    let magnitude_score = (gap_percent / 0.05).clamp(0.0, 1.0);
+    (base + 0.15 * magnitude_score).clamp(0.55, 0.9)
 }
 
 #[cfg(test)]

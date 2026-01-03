@@ -25,6 +25,10 @@
 | 4a | Summary schema + parsing scaffolding + compile fixes | Completed |
 | 4b | Backend aggregation + summaries in core REST/SSE + tests | Completed |
 | 4c | Frontend aggregation dashboard + weighting controls + tests | Completed |
+| 5 | Confidence scoring calibration (core + advanced) | In Progress |
+| 5a | Core confidence heuristics (candlesticks, gaps, chart patterns) + tests | Completed |
+| 5b | Advanced confidence heuristics (Fibonacci, Elliott, fractals) + tests | Pending |
+| 5c | Frontend confidence context (tooltips/notes) + tests | Pending |
 
 ---
 
@@ -131,6 +135,18 @@ Deliverables:
 - Aggregated summary in core endpoint.
 - Configurable weighting by timeframe and signal type.
 - Frontend aggregation dashboard (bullish/bearish scores, top signals, timeframe weighting controls).
+
+### Phase 5: Confidence Scoring Calibration
+
+Scope:
+- Replace static confidence values with heuristic scoring per detector.
+- Ensure confidence reflects signal quality (fit, symmetry, volume confirmation, pivot strength).
+- Keep confidence comparable across core and advanced categories.
+
+Deliverables:
+- Core pattern confidence heuristics for candlesticks, gaps, and chart patterns.
+- Advanced confidence heuristics for Fibonacci, Elliott, and fractal detections.
+- Frontend displays confidence context (notes/tooltips) sourced from backend `notes`.
 
 ---
 

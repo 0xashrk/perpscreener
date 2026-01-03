@@ -16,6 +16,7 @@ pub fn detect_candlestick_patterns(candles: &[Candle]) -> Vec<DetectedPattern> {
 }
 
 pub(super) fn build_pattern(
+    candles: &[Candle],
     name: &'static str,
     classification: crate::models::patterns::PatternClassification,
     window: usize,
@@ -25,7 +26,7 @@ pub(super) fn build_pattern(
         category: "candlestick_reversal",
         classification,
         signal_type: crate::models::patterns::PatternSignalType::Reversal,
-        confidence: confidence_for_window(window),
+        confidence: candlestick_confidence(candles, window),
         window,
         notes: None,
     }
@@ -124,15 +125,30 @@ pub(super) fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() <= tol
 }
 
-fn confidence_for_window(window: usize) -> f64 {
-    match window {
-        1 => 0.65,
-        2 => 0.7,
-        3 => 0.75,
-        4 => 0.8,
-        5 => 0.85,
-        _ => 0.7,
+fn candlestick_confidence(candles: &[Candle], window: usize) -> f64 {
+    let Some(last) = candle(candles, 0) else {
+        return 0.6;
+    };
+    let range_value = range(last).abs();
+    if range_value <= f64::EPSILON {
+        return 0.55;
     }
+    let body_value = body(last).abs();
+    let body_ratio = (body_value / range_value).clamp(0.0, 1.0);
+    let extremity = (body_ratio - 0.5).abs() * 2.0;
+    let mut avg_window = window.max(5).min(10);
+    avg_window = avg_window.min(candles.len()).max(1);
+    let avg_range = avg_high_low_diff(candles, avg_window, 0).unwrap_or(range_value);
+    let range_ratio = if avg_range > f64::EPSILON {
+        range_value / avg_range
+    } else {
+        1.0
+    };
+    let range_score = ((range_ratio - 0.5) / 1.5).clamp(0.0, 1.0);
+    let window_score = (window.min(5) as f64) / 5.0;
+
+    let confidence = 0.45 + 0.25 * window_score + 0.2 * extremity + 0.25 * range_score;
+    confidence.clamp(0.45, 0.92)
 }
 
 fn window_slice(candles: &[Candle], window: usize, offset: usize) -> Option<&[Candle]> {
@@ -176,7 +192,8 @@ mod tests {
 
     #[test]
     fn build_pattern_sets_defaults() {
-        let pattern = build_pattern("Hammer", PatternClassification::Bullish, 1);
+        let candles = vec![candle(10.0, 12.0, 12.0, 9.0)];
+        let pattern = build_pattern(&candles, "Hammer", PatternClassification::Bullish, 1);
         assert_eq!(pattern.category, "candlestick_reversal");
         assert_eq!(pattern.signal_type, PatternSignalType::Reversal);
     }
@@ -190,5 +207,24 @@ mod tests {
         ];
         let value = stochastic(&candles, 3, 0).expect("stochastic");
         assert!(value > 0.0);
+    }
+
+    #[test]
+    fn candlestick_confidence_varies_with_range() {
+        let mut candles = vec![candle(10.0, 10.5, 10.5, 9.5); 10];
+        let base = candlestick_confidence(&candles, 1);
+
+        candles[9] = candle(10.0, 11.5, 12.0, 9.0);
+        let boosted = candlestick_confidence(&candles, 1);
+
+        assert!(boosted > base);
+    }
+
+    #[test]
+    fn candlestick_confidence_stays_in_bounds() {
+        let candles = vec![candle(10.0, 12.0, 12.0, 9.0); 5];
+        let confidence = candlestick_confidence(&candles, 3);
+        assert!(confidence >= 0.45);
+        assert!(confidence <= 0.92);
     }
 }

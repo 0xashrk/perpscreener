@@ -60,28 +60,40 @@ fn detect_triangles(
     let resistance_flat = is_flat(resistance_slope, price_ref);
 
     if resistance_flat && support_slope > 0.0 {
+        let strength = 0.6 * flatness_score(resistance_slope, price_ref)
+            + 0.4 * slope_strength(support_slope, price_ref);
         results.push(chart_pattern(
             "Ascending Triangle",
             PatternClassification::Bullish,
             PatternSignalType::Continuation,
             "chart_continuation",
             10,
+            strength,
         ));
     } else if support_flat && resistance_slope < 0.0 {
+        let strength =
+            0.6 * flatness_score(support_slope, price_ref)
+                + 0.4 * slope_strength(resistance_slope, price_ref);
         results.push(chart_pattern(
             "Descending Triangle",
             PatternClassification::Bearish,
             PatternSignalType::Continuation,
             "chart_continuation",
             10,
+            strength,
         ));
     } else if resistance_slope < 0.0 && support_slope > 0.0 {
+        let balance = slope_balance(support_slope, resistance_slope, price_ref);
+        let convergence = slope_strength(support_slope, price_ref)
+            .min(slope_strength(resistance_slope, price_ref));
+        let strength = 0.6 * balance + 0.4 * convergence;
         results.push(chart_pattern(
             "Symmetrical Triangle",
             PatternClassification::Neutral,
             PatternSignalType::Continuation,
             "chart_continuation",
             10,
+            strength,
         ));
     }
 
@@ -108,6 +120,9 @@ fn detect_channels(
     }
 
     let avg_slope = (support_slope + resistance_slope) / 2.0;
+    let tightness =
+        1.0 - (slope_delta / (price_ref.abs() * CHANNEL_SLOPE_TOLERANCE).max(f64::EPSILON))
+            .clamp(0.0, 1.0);
     if is_flat(avg_slope, price_ref) {
         results.push(chart_pattern(
             "Horizontal Channel",
@@ -115,6 +130,7 @@ fn detect_channels(
             PatternSignalType::Range,
             "channel",
             10,
+            tightness,
         ));
     } else if avg_slope > 0.0 {
         results.push(chart_pattern(
@@ -123,6 +139,7 @@ fn detect_channels(
             PatternSignalType::Trend,
             "channel",
             10,
+            tightness,
         ));
     } else {
         results.push(chart_pattern(
@@ -131,6 +148,7 @@ fn detect_channels(
             PatternSignalType::Trend,
             "channel",
             10,
+            tightness,
         ));
     }
 
@@ -155,23 +173,27 @@ fn detect_wedges(
         && resistance_slope > 0.0
         && support_slope > resistance_slope + price_ref * WEDGE_SLOPE_DELTA
     {
+        let strength = wedge_strength(support_slope - resistance_slope, price_ref);
         results.push(chart_pattern(
             "Rising Wedge",
             PatternClassification::Bearish,
             PatternSignalType::Reversal,
             "chart_reversal",
             10,
+            strength,
         ));
     } else if support_slope < 0.0
         && resistance_slope < 0.0
         && resistance_slope < support_slope - price_ref * WEDGE_SLOPE_DELTA
     {
+        let strength = wedge_strength(resistance_slope - support_slope, price_ref);
         results.push(chart_pattern(
             "Falling Wedge",
             PatternClassification::Bullish,
             PatternSignalType::Reversal,
             "chart_reversal",
             10,
+            strength,
         ));
     }
 
@@ -187,12 +209,18 @@ fn detect_head_shoulders(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             let shoulders_close = within_pct(left.price, right.price, SHOULDER_TOLERANCE_PCT);
             let head_above = head.price >= left.price * (1.0 + PIVOT_TOLERANCE_PCT);
             if shoulders_close && head_above {
+                let shoulders = pivot_tightness(left.price, right.price, SHOULDER_TOLERANCE_PCT);
+                let avg = (left.price + right.price) / 2.0;
+                let head_delta = ((head.price - avg) / avg).abs();
+                let head_strength = clamp01(head_delta / (PIVOT_TOLERANCE_PCT * 2.0));
+                let strength = 0.6 * shoulders + 0.4 * head_strength;
                 results.push(chart_pattern(
                     "Head and Shoulders",
                     PatternClassification::Bearish,
                     PatternSignalType::Reversal,
                     "chart_reversal",
                     20,
+                    strength,
                 ));
             }
         }
@@ -205,12 +233,18 @@ fn detect_head_shoulders(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             let shoulders_close = within_pct(left.price, right.price, SHOULDER_TOLERANCE_PCT);
             let head_below = head.price <= left.price * (1.0 - PIVOT_TOLERANCE_PCT);
             if shoulders_close && head_below {
+                let shoulders = pivot_tightness(left.price, right.price, SHOULDER_TOLERANCE_PCT);
+                let avg = (left.price + right.price) / 2.0;
+                let head_delta = ((head.price - avg) / avg).abs();
+                let head_strength = clamp01(head_delta / (PIVOT_TOLERANCE_PCT * 2.0));
+                let strength = 0.6 * shoulders + 0.4 * head_strength;
                 results.push(chart_pattern(
                     "Inverse Head and Shoulders",
                     PatternClassification::Bullish,
                     PatternSignalType::Reversal,
                     "chart_reversal",
                     20,
+                    strength,
                 ));
             }
         }
@@ -225,12 +259,15 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
     if highs_double.len() == 2 {
         let last_two = &highs_double[highs_double.len() - 2..];
         if within_pct(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT) {
+            let strength =
+                pivot_tightness(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT);
             results.push(chart_pattern(
                 "Double Top",
                 PatternClassification::Bearish,
                 PatternSignalType::Reversal,
                 "chart_reversal",
                 15,
+                strength,
             ));
         }
     }
@@ -241,12 +278,17 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             && within_pct(highs_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
             && within_pct(highs_triple[2].price, avg, PIVOT_TOLERANCE_PCT)
         {
+            let strength = (pivot_tightness(highs_triple[0].price, avg, PIVOT_TOLERANCE_PCT)
+                + pivot_tightness(highs_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
+                + pivot_tightness(highs_triple[2].price, avg, PIVOT_TOLERANCE_PCT))
+                / 3.0;
             results.push(chart_pattern(
                 "Triple Top",
                 PatternClassification::Bearish,
                 PatternSignalType::Reversal,
                 "chart_reversal",
                 20,
+                strength,
             ));
         }
     }
@@ -255,12 +297,15 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
     if lows_double.len() == 2 {
         let last_two = &lows_double[lows_double.len() - 2..];
         if within_pct(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT) {
+            let strength =
+                pivot_tightness(last_two[0].price, last_two[1].price, PIVOT_TOLERANCE_PCT);
             results.push(chart_pattern(
                 "Double Bottom",
                 PatternClassification::Bullish,
                 PatternSignalType::Reversal,
                 "chart_reversal",
                 15,
+                strength,
             ));
         }
     }
@@ -271,12 +316,17 @@ fn detect_double_triple(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
             && within_pct(lows_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
             && within_pct(lows_triple[2].price, avg, PIVOT_TOLERANCE_PCT)
         {
+            let strength = (pivot_tightness(lows_triple[0].price, avg, PIVOT_TOLERANCE_PCT)
+                + pivot_tightness(lows_triple[1].price, avg, PIVOT_TOLERANCE_PCT)
+                + pivot_tightness(lows_triple[2].price, avg, PIVOT_TOLERANCE_PCT))
+                / 3.0;
             results.push(chart_pattern(
                 "Triple Bottom",
                 PatternClassification::Bullish,
                 PatternSignalType::Reversal,
                 "chart_reversal",
                 20,
+                strength,
             ));
         }
     }
@@ -325,6 +375,10 @@ fn detect_flags_pennants(
     if flag_range_pct > FLAG_RANGE_THRESHOLD {
         return results;
     }
+    let trend_strength =
+        (trend_pct.abs() / (FLAG_TREND_THRESHOLD * 2.0)).clamp(0.0, 1.0);
+    let flag_tightness = 1.0 - (flag_range_pct / FLAG_RANGE_THRESHOLD).clamp(0.0, 1.0);
+    let strength = 0.6 * trend_strength + 0.4 * flag_tightness;
 
     let (support, resistance) = trendline_pair(features);
     let (Some(support), Some(resistance)) = (support, resistance) else {
@@ -341,6 +395,7 @@ fn detect_flags_pennants(
                 PatternSignalType::Continuation,
                 "chart_continuation",
                 10,
+                strength,
             ));
         } else if support_slope > 0.0 && resistance_slope < 0.0 {
             results.push(chart_pattern(
@@ -349,6 +404,7 @@ fn detect_flags_pennants(
                 PatternSignalType::Continuation,
                 "chart_continuation",
                 10,
+                strength,
             ));
         }
     } else if support_slope > 0.0 && resistance_slope > 0.0 {
@@ -358,6 +414,7 @@ fn detect_flags_pennants(
             PatternSignalType::Continuation,
             "chart_continuation",
             10,
+            strength,
         ));
     } else if support_slope > 0.0 && resistance_slope < 0.0 {
         results.push(chart_pattern(
@@ -366,6 +423,7 @@ fn detect_flags_pennants(
             PatternSignalType::Continuation,
             "chart_continuation",
             10,
+            strength,
         ));
     }
 
@@ -375,24 +433,38 @@ fn detect_flags_pennants(
 fn detect_three_methods(candles: &[Candle]) -> Vec<DetectedPattern> {
     let mut results = Vec::new();
     if rising_three_methods(candles) {
+        let strength = three_methods_strength(candles).unwrap_or(0.5);
         results.push(chart_pattern(
             "Rising Three Methods",
             PatternClassification::Bullish,
             PatternSignalType::Continuation,
             "chart_continuation",
             5,
+            strength,
         ));
     }
     if falling_three_methods(candles) {
+        let strength = three_methods_strength(candles).unwrap_or(0.5);
         results.push(chart_pattern(
             "Falling Three Methods",
             PatternClassification::Bearish,
             PatternSignalType::Continuation,
             "chart_continuation",
             5,
+            strength,
         ));
     }
     results
+}
+
+fn three_methods_strength(candles: &[Candle]) -> Option<f64> {
+    let c4 = candle_at(candles, 4)?;
+    let range_value = range(c4).abs();
+    if range_value <= f64::EPSILON {
+        return Some(0.5);
+    }
+    let body_ratio = (body(c4).abs() / range_value).clamp(0.0, 1.0);
+    Some(body_ratio)
 }
 
 fn rising_three_methods(candles: &[Candle]) -> bool {
@@ -489,12 +561,17 @@ fn detect_cup_handle(features: &FeatureSnapshot) -> Vec<DetectedPattern> {
         if within_pct(left.price, right.price, PIVOT_TOLERANCE_PCT)
             && cup_low.price < left.price * (1.0 - 0.05)
         {
+            let tightness = pivot_tightness(left.price, right.price, PIVOT_TOLERANCE_PCT);
+            let depth = (left.price - cup_low.price) / left.price.max(f64::EPSILON);
+            let depth_score = (depth / 0.1).clamp(0.0, 1.0);
+            let strength = 0.5 * tightness + 0.5 * depth_score;
             results.push(chart_pattern(
                 "Cup and Handle",
                 PatternClassification::Bullish,
                 PatternSignalType::Continuation,
                 "chart_continuation",
                 25,
+                strength,
             ));
         }
     }
@@ -535,16 +612,56 @@ fn chart_pattern(
     signal_type: PatternSignalType,
     category: &'static str,
     window: usize,
+    strength: f64,
 ) -> DetectedPattern {
     DetectedPattern {
         pattern: name,
         category,
         classification,
         signal_type,
-        confidence: 0.65,
+        confidence: chart_confidence(window, strength),
         window,
         notes: None,
     }
+}
+
+fn chart_confidence(window: usize, strength: f64) -> f64 {
+    let window_score = (window.min(25) as f64) / 25.0;
+    let strength_score = clamp01(strength);
+    let confidence = 0.55 + 0.2 * window_score + 0.2 * strength_score;
+    confidence.clamp(0.55, 0.9)
+}
+
+fn clamp01(value: f64) -> f64 {
+    value.clamp(0.0, 1.0)
+}
+
+fn flatness_score(slope: f64, price_ref: f64) -> f64 {
+    let threshold = (price_ref.abs() * FLAT_SLOPE_PCT).max(f64::EPSILON);
+    clamp01(1.0 - (slope.abs() / threshold))
+}
+
+fn slope_strength(slope: f64, price_ref: f64) -> f64 {
+    let threshold = (price_ref.abs() * FLAT_SLOPE_PCT).max(f64::EPSILON);
+    clamp01(slope.abs() / (threshold * 2.0))
+}
+
+fn slope_balance(a: f64, b: f64, price_ref: f64) -> f64 {
+    let threshold = (price_ref.abs() * FLAT_SLOPE_PCT * 2.0).max(f64::EPSILON);
+    clamp01(1.0 - ((a.abs() - b.abs()).abs() / threshold))
+}
+
+fn pivot_tightness(a: f64, b: f64, tolerance_pct: f64) -> f64 {
+    if b.abs() <= f64::EPSILON {
+        return 0.0;
+    }
+    let delta_pct = ((a - b) / b).abs();
+    clamp01(1.0 - (delta_pct / tolerance_pct))
+}
+
+fn wedge_strength(delta: f64, price_ref: f64) -> f64 {
+    let threshold = (price_ref.abs() * WEDGE_SLOPE_DELTA).max(f64::EPSILON);
+    clamp01((delta.abs() - threshold) / (threshold * 2.0))
 }
 
 fn last_pivots(pivots: &[Pivot], kind: PivotKind, count: usize) -> Vec<&Pivot> {

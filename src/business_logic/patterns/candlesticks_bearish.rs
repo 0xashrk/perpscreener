@@ -11,6 +11,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
 
     if abandoned_baby(candles) {
         results.push(build_pattern(
+            candles,
             "Abandoned Baby",
             PatternClassification::Bearish,
             3,
@@ -18,6 +19,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if belt_hold(candles) {
         results.push(build_pattern(
+            candles,
             "Belt Hold",
             PatternClassification::Bearish,
             4,
@@ -25,6 +27,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if dark_cloud_cover(candles) {
         results.push(build_pattern(
+            candles,
             "Dark Cloud Cover",
             PatternClassification::Bearish,
             2,
@@ -32,6 +35,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if doji_gravestone(candles) {
         results.push(build_pattern(
+            candles,
             "Doji (Gravestone)",
             PatternClassification::Bearish,
             1,
@@ -39,6 +43,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if engulfing(candles) {
         results.push(build_pattern(
+            candles,
             "Engulfing",
             PatternClassification::Bearish,
             2,
@@ -46,6 +51,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if evening_star(candles) {
         results.push(build_pattern(
+            candles,
             "Evening Star",
             PatternClassification::Bearish,
             3,
@@ -53,6 +59,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if evening_doji_star(candles) {
         results.push(build_pattern(
+            candles,
             "Evening Doji Star",
             PatternClassification::Bearish,
             3,
@@ -60,16 +67,18 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if hanging_man(candles) {
         results.push(build_pattern(
+            candles,
             "Hanging Man",
             PatternClassification::Bearish,
             1,
         ));
     }
     if harami(candles) {
-        results.push(build_pattern("Harami", PatternClassification::Bearish, 2));
+        results.push(build_pattern(candles, "Harami", PatternClassification::Bearish, 2));
     }
     if shooting_star(candles) {
         results.push(build_pattern(
+            candles,
             "Shooting Star",
             PatternClassification::Bearish,
             1,
@@ -77,6 +86,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if three_black_crows(candles) {
         results.push(build_pattern(
+            candles,
             "Three Black Crows",
             PatternClassification::Bearish,
             3,
@@ -84,6 +94,7 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
     }
     if tweezer_top(candles) {
         results.push(build_pattern(
+            candles,
             "Tweezer Top",
             PatternClassification::Bearish,
             2,
