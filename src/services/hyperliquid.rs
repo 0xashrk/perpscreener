@@ -1,8 +1,26 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+use reqwest::StatusCode;
 
 use crate::models::candle::Candle;
 
 const HYPERLIQUID_API_URL: &str = "https://api.hyperliquid.xyz/info";
+
+#[derive(Debug, Error)]
+pub enum HyperliquidError {
+    #[error("hyperliquid request failed: {0}")]
+    Request(#[from] reqwest::Error),
+    #[error("hyperliquid status {status}: {body}")]
+    Status { status: StatusCode, body: String },
+    #[error("hyperliquid decode error ({status}): {body}")]
+    Decode {
+        status: StatusCode,
+        body: String,
+        #[source]
+        source: serde_json::Error,
+    },
+}
 
 #[derive(Debug, Serialize)]
 struct CandleRequest {
@@ -19,6 +37,15 @@ struct CandleRequestInner {
     start_time: u64,
     #[serde(rename = "endTime")]
     end_time: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct CandleEnvelope {
+    candles: Option<Vec<Candle>>,
+    data: Option<Vec<Candle>>,
+    result: Option<Vec<Candle>>,
+    error: Option<String>,
+    message: Option<String>,
 }
 
 /// HTTP client wrapper for Hyperliquid candle endpoints.
@@ -42,7 +69,7 @@ impl HyperliquidClient {
         interval: &str,
         start_time: u64,
         end_time: u64,
-    ) -> Result<Vec<Candle>, reqwest::Error> {
+    ) -> Result<Vec<Candle>, HyperliquidError> {
         let request = CandleRequest {
             request_type: "candleSnapshot".to_string(),
             req: CandleRequestInner {
@@ -58,11 +85,60 @@ impl HyperliquidClient {
             .post(HYPERLIQUID_API_URL)
             .json(&request)
             .send()
-            .await?
-            .json::<Vec<Candle>>()
             .await?;
+        let status = response.status();
+        let body = response.text().await?;
 
-        Ok(response)
+        if !status.is_success() {
+            return Err(HyperliquidError::Status { status, body });
+        }
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(&body).map_err(|source| HyperliquidError::Decode {
+                status,
+                body: body.clone(),
+                source,
+            })?;
+
+        match parsed {
+            serde_json::Value::Array(_) => serde_json::from_value(parsed).map_err(|source| {
+                HyperliquidError::Decode {
+                    status,
+                    body,
+                    source,
+                }
+            }),
+            serde_json::Value::Object(_) => {
+                let envelope: CandleEnvelope =
+                    serde_json::from_str(&body).map_err(|source| HyperliquidError::Decode {
+                        status,
+                        body: body.clone(),
+                        source,
+                    })?;
+                if let Some(message) = envelope
+                    .error
+                    .or(envelope.message)
+                    .filter(|value| !value.is_empty())
+                {
+                    return Err(HyperliquidError::Status { status, body: message });
+                }
+                if let Some(candles) = envelope
+                    .candles
+                    .or(envelope.data)
+                    .or(envelope.result)
+                {
+                    return Ok(candles);
+                }
+                Err(HyperliquidError::Status {
+                    status,
+                    body: format!("missing candle array: {}", body),
+                })
+            }
+            _ => Err(HyperliquidError::Status {
+                status,
+                body: format!("unexpected JSON payload: {}", body),
+            }),
+        }
     }
 
     /// Fetch historical candles for warmup (last N minutes of 1m candles).
@@ -70,7 +146,7 @@ impl HyperliquidClient {
         &self,
         coin: &str,
         warmup_candles: usize,
-    ) -> Result<Vec<Candle>, reqwest::Error> {
+    ) -> Result<Vec<Candle>, HyperliquidError> {
         let now = chrono::Utc::now().timestamp_millis() as u64;
         let interval_ms = 60_000u64; // 1 minute
         let start_time = now - (warmup_candles as u64 * interval_ms);

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use tokio::time::interval;
+use tokio::time::{interval, sleep};
 
 use crate::models::interval::CandleInterval;
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
@@ -15,6 +15,7 @@ pub struct CandleIngestionConfig {
     pub warmup_candles: usize,
     pub max_candles: usize,
     pub poll_interval: Duration,
+    pub request_delay: Duration,
 }
 
 impl CandleIngestionConfig {
@@ -40,6 +41,7 @@ impl CandleIngestionConfig {
             warmup_candles: 500,
             max_candles: 5000,
             poll_interval: Duration::from_secs(60),
+            request_delay: Duration::from_millis(120),
         }
     }
 }
@@ -74,6 +76,9 @@ impl CandleIngestionService {
         for coin in &coins {
             for interval in &intervals {
                 self.warmup_key(coin, *interval).await?;
+                if !self.config.request_delay.is_zero() {
+                    sleep(self.config.request_delay).await;
+                }
             }
         }
         Ok(())
@@ -95,6 +100,9 @@ impl CandleIngestionService {
                             candle_interval,
                             err
                         );
+                    }
+                    if !self.config.request_delay.is_zero() {
+                        sleep(self.config.request_delay).await;
                     }
                 }
             }
