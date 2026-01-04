@@ -35,7 +35,7 @@
 | 6c | Gap lifecycle tracking + tests | Completed |
 | 6d | Chart pattern lifecycle tracking + tests | Completed |
 | 6e | Advanced lifecycle tracking + tests | Completed |
-| 6f | Lifecycle snapshots over REST/SSE + tests | Pending |
+| 6f | Lifecycle snapshots over REST/SSE + tests | Completed |
 | 6g | Frontend live pattern board (double-top parity) + tests | Pending |
 | 6h | Alerts + UX polish + tests | Pending |
 

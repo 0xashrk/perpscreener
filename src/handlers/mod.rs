@@ -8,6 +8,8 @@ pub mod double_top;
 pub mod health;
 /// Core pattern screening handlers.
 pub mod patterns;
+/// Live pattern lifecycle handlers.
+pub mod pattern_lifecycle;
 /// Shared query extractors.
 pub mod query;
 /// VWAP streaming handlers.

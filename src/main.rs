@@ -19,6 +19,7 @@ use crate::handlers::advanced_patterns::{get_advanced_patterns, get_advanced_pat
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
+use crate::handlers::pattern_lifecycle::{get_pattern_lifecycle, get_pattern_lifecycle_stream};
 use crate::handlers::patterns::{get_patterns, get_patterns_stream};
 use crate::handlers::vwap::{get_vwap_snapshot, get_vwap_stream};
 use crate::models::candle::Candle;
@@ -28,8 +29,9 @@ use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList,
-    PatternClassification, PatternDetection, PatternQuery, PatternResponse, PatternSignalType,
-    PatternSummary, PatternSummarySignal,
+    PatternClassification, PatternDetection, PatternLifecycleEntry, PatternLifecycleSnapshot,
+    PatternLifecycleState, PatternQuery, PatternResponse, PatternSignalType, PatternSummary,
+    PatternSummarySignal,
 };
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::advanced_pattern_monitor::{
@@ -43,6 +45,10 @@ use crate::services::core_pattern_state::CorePatternStateInner;
 use crate::services::feature_store::FeatureStoreInner;
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::monitor::MonitorService;
+use crate::services::pattern_lifecycle_monitor::{
+    PatternLifecycleMonitor, PatternLifecycleMonitorConfig,
+};
+use crate::services::pattern_lifecycle_state::PatternLifecycleStateInner;
 use crate::services::pattern_state::{PatternStateInner, SharedPatternState};
 use crate::state::AppState;
 
@@ -54,6 +60,8 @@ use crate::state::AppState;
         handlers::double_top::get_double_top_stream,
         handlers::patterns::get_patterns,
         handlers::patterns::get_patterns_stream,
+        handlers::pattern_lifecycle::get_pattern_lifecycle,
+        handlers::pattern_lifecycle::get_pattern_lifecycle_stream,
         handlers::advanced_patterns::get_advanced_patterns,
         handlers::advanced_patterns::get_advanced_patterns_stream,
         handlers::chart::get_chart_stream,
@@ -79,6 +87,9 @@ use crate::state::AppState;
         PatternDetection,
         PatternSummary,
         PatternSummarySignal,
+        PatternLifecycleSnapshot,
+        PatternLifecycleEntry,
+        PatternLifecycleState,
         AdvancedPatternResponse,
         AdvancedPatternDetection,
         PatternClassification,
@@ -106,10 +117,12 @@ async fn main() {
     let feature_store = Arc::new(FeatureStoreInner::new(FeatureConfig::default()));
     let core_pattern_state = Arc::new(CorePatternStateInner::new());
     let advanced_pattern_state = Arc::new(AdvancedPatternStateInner::new());
+    let pattern_lifecycle_state = Arc::new(PatternLifecycleStateInner::new());
     let app_state = AppState {
         pattern_state: pattern_state.clone(),
         core_pattern_state: core_pattern_state.clone(),
         advanced_pattern_state: advanced_pattern_state.clone(),
+        pattern_lifecycle_state: pattern_lifecycle_state.clone(),
         candle_store: candle_store.clone(),
         feature_store: feature_store.clone(),
         hyperliquid: Arc::new(HyperliquidClient::new()),
@@ -157,6 +170,20 @@ async fn main() {
         advanced_pattern_monitor.run().await;
     });
 
+    let lifecycle_monitor = PatternLifecycleMonitor::new(
+        candle_store.clone(),
+        feature_store.clone(),
+        pattern_lifecycle_state.clone(),
+        PatternLifecycleMonitorConfig::new(
+            ingestion_config.coins.clone(),
+            ingestion_config.intervals.clone(),
+        ),
+    );
+
+    tokio::spawn(async move {
+        lifecycle_monitor.run().await;
+    });
+
     let ingestion_store = candle_store.clone();
     let ingestion_features = feature_store.clone();
 
@@ -190,7 +217,9 @@ async fn main() {
         .route("/stream", get(get_vwap_stream));
     let pattern_routes = Router::new()
         .route("/", get(get_patterns))
-        .route("/stream", get(get_patterns_stream));
+        .route("/stream", get(get_patterns_stream))
+        .route("/lifecycle", get(get_pattern_lifecycle))
+        .route("/lifecycle/stream", get(get_pattern_lifecycle_stream));
     let advanced_pattern_routes = Router::new()
         .route("/", get(get_advanced_patterns))
         .route("/stream", get(get_advanced_patterns_stream));

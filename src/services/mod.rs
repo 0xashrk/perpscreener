@@ -22,5 +22,9 @@ pub mod hyperliquid;
 pub mod monitor;
 /// Shared in-memory pattern state.
 pub mod pattern_state;
+/// Pattern lifecycle monitoring loop.
+pub mod pattern_lifecycle_monitor;
+/// Pattern lifecycle snapshot state store.
+pub mod pattern_lifecycle_state;
 /// VWAP snapshot orchestration and validation.
 pub mod vwap;

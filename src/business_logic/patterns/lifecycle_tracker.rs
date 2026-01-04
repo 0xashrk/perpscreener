@@ -21,6 +21,7 @@ struct PatternLifecycleKey {
     coin: String,
     interval: CandleInterval,
     pattern: String,
+    category: PatternLifecycleCategory,
     classification: PatternClassification,
 }
 
@@ -125,6 +126,7 @@ impl PatternLifecycleTracker {
                 coin: coin.to_string(),
                 interval,
                 pattern: def.name.to_string(),
+                category: def.category,
                 classification: def.classification,
             };
 
@@ -165,6 +167,7 @@ impl PatternLifecycleTracker {
                 coin: coin.to_string(),
                 interval,
                 pattern: def.name.to_string(),
+                category: def.category,
                 classification: def.classification,
             };
 
@@ -218,6 +221,7 @@ impl PatternLifecycleTracker {
                 coin: coin.to_string(),
                 interval,
                 pattern: def.name.to_string(),
+                category: def.category,
                 classification: def.classification,
             };
 
@@ -260,6 +264,7 @@ impl PatternLifecycleTracker {
                 coin: coin.to_string(),
                 interval,
                 pattern: def.name.to_string(),
+                category: def.category,
                 classification: def.classification,
             };
 

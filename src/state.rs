@@ -5,6 +5,7 @@ use crate::services::candle_store::SharedCandleStore;
 use crate::services::core_pattern_state::SharedCorePatternState;
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
+use crate::services::pattern_lifecycle_state::SharedPatternLifecycleState;
 use crate::services::pattern_state::SharedPatternState;
 
 /// Shared application state for handlers and services.
@@ -16,6 +17,8 @@ pub struct AppState {
     pub core_pattern_state: SharedCorePatternState,
     /// Advanced pattern detections for advanced endpoints.
     pub advanced_pattern_state: SharedAdvancedPatternState,
+    /// Pattern lifecycle entries for live state machines.
+    pub pattern_lifecycle_state: SharedPatternLifecycleState,
     /// Shared candle cache.
     #[allow(dead_code)]
     pub candle_store: SharedCandleStore,
