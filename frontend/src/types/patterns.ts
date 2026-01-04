@@ -23,6 +23,35 @@ export type PatternDetection = {
   notes: string;
 };
 
+export type PatternLifecycleState =
+  | "warming"
+  | "watching"
+  | "forming"
+  | "confirmed"
+  | "invalidated"
+  | "expired";
+
+export type PatternLifecycleEntry = {
+  coin: string;
+  interval: string;
+  pattern: string;
+  category: string;
+  classification: PatternClassification;
+  signalType: PatternSignalType;
+  state: PatternLifecycleState;
+  confidence: number;
+  stateSinceMs: number;
+  lastUpdatedMs: number;
+  windowStartMs: number;
+  windowEndMs: number;
+  notes: string;
+};
+
+export type PatternLifecycleSnapshot = {
+  asOfMs: number;
+  entries: PatternLifecycleEntry[];
+};
+
 export type PatternSnapshot = {
   asOfMs: number;
   detections: PatternDetection[];

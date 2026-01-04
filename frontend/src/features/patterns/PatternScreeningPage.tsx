@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { PATTERN_INTERVALS, TOKENS } from "../../config";
 import { useAdvancedPatternStream } from "../../hooks/useAdvancedPatternStream";
 import { usePatternStream } from "../../hooks/usePatternStream";
+import { usePatternLifecycleStream } from "../../hooks/usePatternLifecycleStream";
 import { PatternSignalType } from "../../types/patterns";
 import { createDefaultWeightConfig, summarizeDetections } from "../../utils/patternAggregation";
 import { AdvancedPatternList } from "./AdvancedPatternList";
@@ -9,6 +10,7 @@ import { PatternFilters } from "./PatternFilters";
 import { PatternList } from "./PatternList";
 import { PatternScreeningStub } from "./PatternScreeningStub";
 import { PatternSummaryPanel } from "./PatternSummaryPanel";
+import { PatternLifecycleBoard } from "./PatternLifecycleBoard";
 import { PatternWeightControls } from "./PatternWeightControls";
 
 const toggleItem = <T,>(items: T[], item: T): T[] => {
@@ -37,6 +39,7 @@ export const PatternScreeningPage = () => {
 
   const stream = usePatternStream();
   const advancedStream = useAdvancedPatternStream();
+  const lifecycleStream = usePatternLifecycleStream();
 
   const scopedDetections = useMemo(() => {
     return stream.snapshot.detections
@@ -51,6 +54,20 @@ export const PatternScreeningPage = () => {
   const summaries = useMemo(() => {
     return summarizeDetections(scopedDetections, weightConfig);
   }, [scopedDetections, weightConfig]);
+
+  const scopedLifecycleEntries = useMemo(() => {
+    const scoped = lifecycleStream.snapshot.entries
+      .filter((entry) => tokensInScope.includes(entry.coin))
+      .filter((entry) => intervalsInScope.includes(entry.interval));
+    if (activePanel === "advanced") {
+      return scoped.filter((entry) =>
+        ["fibonacci_retracement", "elliott_wave", "williams_fractal"].includes(entry.category)
+      );
+    }
+    return scoped.filter(
+      (entry) => !["fibonacci_retracement", "elliott_wave", "williams_fractal"].includes(entry.category)
+    );
+  }, [activePanel, intervalsInScope, lifecycleStream.snapshot.entries, tokensInScope]);
 
   const sortedAdvanced = useMemo(() => {
     return advancedStream.snapshot.detections
@@ -143,6 +160,12 @@ export const PatternScreeningPage = () => {
         <div className="flex flex-col gap-4">
           {activePanel === "core" ? (
             <>
+              <PatternLifecycleBoard
+                entries={scopedLifecycleEntries}
+                status={lifecycleStream.status}
+                error={lifecycleStream.error}
+                nowMs={Date.now()}
+              />
               <PatternSummaryPanel summaries={summaries} />
               <PatternWeightControls
                 intervals={PATTERN_INTERVALS}
@@ -153,7 +176,14 @@ export const PatternScreeningPage = () => {
                 onReset={handleResetWeights}
               />
             </>
-          ) : null}
+          ) : (
+            <PatternLifecycleBoard
+              entries={scopedLifecycleEntries}
+              status={lifecycleStream.status}
+              error={lifecycleStream.error}
+              nowMs={Date.now()}
+            />
+          )}
           <PatternFilters
             tokens={TOKENS}
             activeTokens={tokensInScope}

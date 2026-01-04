@@ -2,9 +2,12 @@ import {
   AdvancedPatternDetection,
   AdvancedPatternSnapshot,
   PatternDetection,
+  PatternLifecycleEntry,
+  PatternLifecycleSnapshot,
   PatternSnapshot,
   PatternSummary,
   PatternSummarySignal,
+  PatternLifecycleState,
   PatternSignalType
 } from "../types/patterns";
 import { ParseResult } from "../types/stream";
@@ -41,6 +44,17 @@ const isSignalType = (value: string): value is PatternSignalType => {
 
 const isClassification = (value: string): value is PatternDetection["classification"] => {
   return value === "bullish" || value === "bearish" || value === "neutral";
+};
+
+const isLifecycleState = (value: string): value is PatternLifecycleState => {
+  return (
+    value === "warming" ||
+    value === "watching" ||
+    value === "forming" ||
+    value === "confirmed" ||
+    value === "invalidated" ||
+    value === "expired"
+  );
 };
 
 const parseDetection = (item: JsonObject): PatternDetection | null => {
@@ -84,6 +98,59 @@ const parseDetection = (item: JsonObject): PatternDetection | null => {
     signalType,
     confidence,
     detectedAtMs,
+    windowStartMs,
+    windowEndMs,
+    notes: typeof notes === "string" ? notes : ""
+  };
+};
+
+const parseLifecycleEntry = (item: JsonObject): PatternLifecycleEntry | null => {
+  const coin = item["coin"];
+  const interval = item["interval"];
+  const pattern = item["pattern"];
+  const category = item["category"];
+  const classification = item["classification"];
+  const signalType = item["signal_type"];
+  const state = item["state"];
+  const confidence = item["confidence"];
+  const stateSinceMs = item["state_since_ms"];
+  const lastUpdatedMs = item["last_updated_ms"];
+  const windowStartMs = item["window_start_ms"];
+  const windowEndMs = item["window_end_ms"];
+  const notes = item["notes"];
+
+  if (
+    typeof coin !== "string" ||
+    typeof interval !== "string" ||
+    typeof pattern !== "string" ||
+    typeof category !== "string" ||
+    typeof classification !== "string" ||
+    typeof signalType !== "string" ||
+    typeof state !== "string" ||
+    typeof confidence !== "number" ||
+    typeof stateSinceMs !== "number" ||
+    typeof lastUpdatedMs !== "number" ||
+    typeof windowStartMs !== "number" ||
+    typeof windowEndMs !== "number"
+  ) {
+    return null;
+  }
+
+  if (!isClassification(classification) || !isSignalType(signalType) || !isLifecycleState(state)) {
+    return null;
+  }
+
+  return {
+    coin,
+    interval,
+    pattern,
+    category,
+    classification,
+    signalType,
+    state,
+    confidence,
+    stateSinceMs,
+    lastUpdatedMs,
     windowStartMs,
     windowEndMs,
     notes: typeof notes === "string" ? notes : ""
@@ -216,10 +283,48 @@ const parseSnapshot = (data: JsonValue): PatternSnapshot => {
   return { asOfMs, detections, summaries };
 };
 
+const parseLifecycleSnapshot = (data: JsonValue): PatternLifecycleSnapshot => {
+  if (!isObject(data)) {
+    throw new Error("Invalid lifecycle payload");
+  }
+
+  const asOfMs = data["as_of_ms"];
+  const entriesRaw = data["entries"];
+
+  if (typeof asOfMs !== "number" || !Array.isArray(entriesRaw)) {
+    throw new Error("Missing lifecycle fields");
+  }
+
+  const entries: PatternLifecycleEntry[] = [];
+  entriesRaw.forEach((item) => {
+    if (!isObject(item)) {
+      return;
+    }
+    const parsed = parseLifecycleEntry(item);
+    if (parsed) {
+      entries.push(parsed);
+    }
+  });
+
+  return { asOfMs, entries };
+};
+
 export const parsePatternSnapshot = (data: string): ParseResult<PatternSnapshot> => {
   try {
     const parsed = JSON.parse(data) as JsonValue;
     return { ok: true, value: parseSnapshot(parsed) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON";
+    return { ok: false, reason: message };
+  }
+};
+
+export const parsePatternLifecycleSnapshot = (
+  data: string
+): ParseResult<PatternLifecycleSnapshot> => {
+  try {
+    const parsed = JSON.parse(data) as JsonValue;
+    return { ok: true, value: parseLifecycleSnapshot(parsed) };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid JSON";
     return { ok: false, reason: message };
