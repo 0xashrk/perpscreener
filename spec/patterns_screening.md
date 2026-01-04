@@ -33,7 +33,7 @@
 | 6a | State machine registry + lifecycle schema + tests | Completed |
 | 6b | Candlestick lifecycle tracking + tests | Completed |
 | 6c | Gap lifecycle tracking + tests | Completed |
-| 6d | Chart pattern lifecycle tracking + tests | Pending |
+| 6d | Chart pattern lifecycle tracking + tests | Completed |
 | 6e | Advanced lifecycle tracking + tests | Pending |
 | 6f | Lifecycle snapshots over REST/SSE + tests | Pending |
 | 6g | Frontend live pattern board (double-top parity) + tests | Pending |

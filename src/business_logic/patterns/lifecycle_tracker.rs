@@ -5,9 +5,11 @@ use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     PatternClassification, PatternLifecycleEntry, PatternLifecycleState, PatternSignalType,
 };
+use crate::business_logic::features::{FeatureSnapshot, Trendline, TrendlineKind};
 
 use super::candlesticks::detect_candlestick_patterns;
 use super::gaps::detect_gap_patterns;
+use super::chart_patterns::detect_chart_patterns;
 use super::lifecycle_registry::{
     pattern_registry, PatternLifecycleCategory, PatternLifecycleDefinition,
 };
@@ -25,6 +27,7 @@ struct PatternLifecycleKey {
 pub struct PatternLifecycleTracker {
     candlestick_defs: Vec<PatternLifecycleDefinition>,
     gap_defs: Vec<PatternLifecycleDefinition>,
+    chart_defs: Vec<PatternLifecycleDefinition>,
     entries: HashMap<PatternLifecycleKey, PatternLifecycleEntry>,
     gap_context: HashMap<PatternLifecycleKey, GapContext>,
 }
@@ -42,9 +45,15 @@ impl PatternLifecycleTracker {
             .copied()
             .filter(|def| def.category == PatternLifecycleCategory::Gap)
             .collect();
+        let chart_defs = definitions
+            .iter()
+            .copied()
+            .filter(|def| def.category == PatternLifecycleCategory::Chart)
+            .collect();
         Self {
             candlestick_defs,
             gap_defs,
+            chart_defs,
             entries: HashMap::new(),
             gap_context: HashMap::new(),
         }
@@ -68,6 +77,17 @@ impl PatternLifecycleTracker {
     ) -> Vec<PatternLifecycleEntry> {
         let detections = detect_gap_patterns(candles);
         self.apply_gap_detections(coin, interval, candles, &detections)
+    }
+
+    pub fn update_chart_patterns(
+        &mut self,
+        coin: &str,
+        interval: CandleInterval,
+        candles: &[Candle],
+        features: Option<&FeatureSnapshot>,
+    ) -> Vec<PatternLifecycleEntry> {
+        let detections = detect_chart_patterns(candles, features, interval);
+        self.apply_chart_detections(coin, interval, candles, features, &detections)
     }
 
     fn apply_candlestick_detections(
@@ -160,9 +180,63 @@ impl PatternLifecycleTracker {
 
         updated
     }
+
+    fn apply_chart_detections(
+        &mut self,
+        coin: &str,
+        interval: CandleInterval,
+        candles: &[Candle],
+        features: Option<&FeatureSnapshot>,
+        detections: &[DetectedPattern],
+    ) -> Vec<PatternLifecycleEntry> {
+        let now_ms = candles.last().map(|c| c.close_time).unwrap_or(0);
+        let detection_map = chart_detection_map(detections);
+        let breakout = breakout_context(features, candles);
+        let mut updated = Vec::new();
+
+        for def in &self.chart_defs {
+            let key = PatternLifecycleKey {
+                coin: coin.to_string(),
+                interval,
+                pattern: def.name.to_string(),
+                classification: def.classification,
+            };
+
+            let detection = detection_map
+                .get(&(def.detector_name, def.classification))
+                .copied();
+            let entry = self.entries.get(&key).cloned();
+
+            let next = next_chart_entry(
+                &key,
+                def,
+                interval,
+                now_ms,
+                candles,
+                entry,
+                detection,
+                breakout.as_ref(),
+            );
+
+            self.entries.insert(key, next.clone());
+            updated.push(next);
+        }
+
+        updated
+    }
 }
 
 fn candlestick_detection_map(
+    detections: &[DetectedPattern],
+) -> HashMap<(&'static str, PatternClassification), &DetectedPattern> {
+    let mut map = HashMap::new();
+    for detection in detections {
+        map.insert((detection.pattern, detection.classification), detection);
+    }
+    map
+}
+
+fn chart_detection_map(
     detections: &[DetectedPattern],
 ) -> HashMap<(&'static str, PatternClassification), &DetectedPattern> {
     let mut map = HashMap::new();
@@ -183,6 +257,110 @@ struct GapContext {
     direction: GapDirection,
     gap_low: f64,
     gap_high: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BreakoutDirection {
+    Up,
+    Down,
+}
+
+#[derive(Debug, Clone)]
+struct BreakoutContext {
+    support: Option<f64>,
+    resistance: Option<f64>,
+    last_close: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BreakoutSignal {
+    None,
+    Confirmed(BreakoutDirection),
+    Invalidated,
+}
+
+const BREAKOUT_TOLERANCE_PCT: f64 = 0.002;
+
+fn breakout_context(
+    features: Option<&FeatureSnapshot>,
+    candles: &[Candle],
+) -> Option<BreakoutContext> {
+    let features = features?;
+    let last = candles.last()?;
+    let (support, resistance) = trendline_pair(features);
+    let time = last.close_time as f64;
+    let support_price = support.and_then(|line| trendline_price_at(line, time));
+    let resistance_price = resistance.and_then(|line| trendline_price_at(line, time));
+
+    Some(BreakoutContext {
+        support: support_price,
+        resistance: resistance_price,
+        last_close: last.close,
+    })
+}
+
+fn breakout_signal(def: &PatternLifecycleDefinition, context: &BreakoutContext) -> BreakoutSignal {
+    match def.classification {
+        PatternClassification::Bullish => {
+            if let Some(resistance) = context.resistance {
+                if context.last_close >= resistance * (1.0 + BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Confirmed(BreakoutDirection::Up);
+                }
+            }
+            if let Some(support) = context.support {
+                if context.last_close <= support * (1.0 - BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Invalidated;
+                }
+            }
+        }
+        PatternClassification::Bearish => {
+            if let Some(support) = context.support {
+                if context.last_close <= support * (1.0 - BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Confirmed(BreakoutDirection::Down);
+                }
+            }
+            if let Some(resistance) = context.resistance {
+                if context.last_close >= resistance * (1.0 + BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Invalidated;
+                }
+            }
+        }
+        PatternClassification::Neutral => {
+            if let Some(resistance) = context.resistance {
+                if context.last_close >= resistance * (1.0 + BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Confirmed(BreakoutDirection::Up);
+                }
+            }
+            if let Some(support) = context.support {
+                if context.last_close <= support * (1.0 - BREAKOUT_TOLERANCE_PCT) {
+                    return BreakoutSignal::Confirmed(BreakoutDirection::Down);
+                }
+            }
+        }
+    }
+
+    BreakoutSignal::None
+}
+
+fn trendline_pair(features: &FeatureSnapshot) -> (Option<&Trendline>, Option<&Trendline>) {
+    let mut support = None;
+    let mut resistance = None;
+    for line in &features.trendlines {
+        match line.kind {
+            TrendlineKind::Support => support = Some(line),
+            TrendlineKind::Resistance => resistance = Some(line),
+        }
+    }
+    (support, resistance)
+}
+
+fn trendline_price_at(line: &Trendline, time: f64) -> Option<f64> {
+    let price = line.slope * time + line.intercept;
+    if price.is_finite() {
+        Some(price)
+    } else {
+        None
+    }
 }
 
 fn next_gap_entry(
@@ -340,6 +518,111 @@ fn next_gap_entry(
         None,
     );
     (entry, None)
+}
+
+fn next_chart_entry(
+    key: &PatternLifecycleKey,
+    def: &PatternLifecycleDefinition,
+    interval: CandleInterval,
+    now_ms: u64,
+    candles: &[Candle],
+    previous: Option<PatternLifecycleEntry>,
+    detection: Option<&DetectedPattern>,
+    breakout: Option<&BreakoutContext>,
+) -> PatternLifecycleEntry {
+    if candles.len() < def.window {
+        return build_entry(
+            key,
+            def,
+            PatternLifecycleState::Warming,
+            previous,
+            now_ms,
+            0.0,
+            0,
+            0,
+            None,
+        );
+    }
+
+    if let Some(detection) = detection {
+        let (window_start_ms, window_end_ms) = window_bounds(candles, detection.window);
+        let signal = breakout
+            .map(|context| breakout_signal(def, context))
+            .unwrap_or(BreakoutSignal::None);
+
+        let (state, note) = match signal {
+            BreakoutSignal::Confirmed(direction) => (
+                PatternLifecycleState::Confirmed,
+                Some(match direction {
+                    BreakoutDirection::Up => "breakout=up".to_string(),
+                    BreakoutDirection::Down => "breakout=down".to_string(),
+                }),
+            ),
+            BreakoutSignal::Invalidated => (PatternLifecycleState::Invalidated, None),
+            BreakoutSignal::None => (PatternLifecycleState::Forming, None),
+        };
+
+        let state_since_ms = match previous.as_ref() {
+            Some(prev) if prev.state == state => prev.state_since_ms,
+            _ => now_ms,
+        };
+
+        return PatternLifecycleEntry {
+            coin: key.coin.clone(),
+            interval: key.interval,
+            pattern: key.pattern.clone(),
+            category: def.category_label.to_string(),
+            classification: def.classification,
+            signal_type: def.signal_type,
+            state,
+            confidence: detection.confidence,
+            state_since_ms,
+            last_updated_ms: now_ms,
+            window_start_ms,
+            window_end_ms,
+            notes: note.or_else(|| detection.notes.clone()),
+        };
+    }
+
+    let Some(previous) = previous else {
+        return build_entry(
+            key,
+            def,
+            PatternLifecycleState::Watching,
+            None,
+            now_ms,
+            0.0,
+            0,
+            0,
+            None,
+        );
+    };
+
+    let bars_since = bars_since(previous.state_since_ms, now_ms, interval);
+    let next_state = match previous.state {
+        PatternLifecycleState::Forming if bars_since >= 1 => PatternLifecycleState::Expired,
+        PatternLifecycleState::Confirmed if bars_since >= def.max_age_bars => {
+            PatternLifecycleState::Expired
+        }
+        PatternLifecycleState::Expired if bars_since >= def.max_age_bars => {
+            PatternLifecycleState::Watching
+        }
+        PatternLifecycleState::Invalidated => PatternLifecycleState::Watching,
+        state => state,
+    };
+
+    let state_since_ms = if next_state == previous.state {
+        previous.state_since_ms
+    } else {
+        now_ms
+    };
+
+    PatternLifecycleEntry {
+        state: next_state,
+        state_since_ms,
+        last_updated_ms: now_ms,
+        ..previous
+    }
 }
 
 fn next_entry(
@@ -575,6 +858,50 @@ mod tests {
         }
     }
 
+    fn chart_detection(pattern: &'static str, classification: PatternClassification) -> DetectedPattern {
+        DetectedPattern {
+            pattern,
+            category: "chart_continuation",
+            classification,
+            signal_type: PatternSignalType::Continuation,
+            confidence: 0.62,
+            window: 10,
+            notes: None,
+        }
+    }
+
+    fn chart_features(resistance: f64, support: f64) -> FeatureSnapshot {
+        FeatureSnapshot {
+            as_of_ms: 0,
+            body_ratios: Vec::new(),
+            gaps: Vec::new(),
+            pivots: Vec::new(),
+            trendlines: vec![
+                Trendline {
+                    kind: TrendlineKind::Resistance,
+                    start_time: 0,
+                    end_time: 0,
+                    start_price: resistance,
+                    end_price: resistance,
+                    slope: 0.0,
+                    intercept: resistance,
+                },
+                Trendline {
+                    kind: TrendlineKind::Support,
+                    start_time: 0,
+                    end_time: 0,
+                    start_price: support,
+                    end_price: support,
+                    slope: 0.0,
+                    intercept: support,
+                },
+            ],
+            ranges: Vec::new(),
+            atr: None,
+            volatility: None,
+        }
+    }
+
     fn common_gap_up_series(
         start_ms: u64,
         interval: CandleInterval,
@@ -751,5 +1078,51 @@ mod tests {
             .find(|entry| entry.pattern == "Common Gap")
             .expect("entry");
         assert_eq!(common_gap.state, PatternLifecycleState::Invalidated);
+    }
+
+    #[test]
+    fn chart_entries_form_when_no_breakout() {
+        let mut tracker = PatternLifecycleTracker::new();
+        let candles = candle_series(0, CandleInterval::OneMinute, 20);
+        let detection = chart_detection("Ascending Triangle", PatternClassification::Bullish);
+
+        let entries = tracker.apply_chart_detections(
+            "BTC",
+            CandleInterval::OneMinute,
+            &candles,
+            None,
+            &[detection],
+        );
+
+        let triangle = entries
+            .iter()
+            .find(|entry| entry.pattern == "Ascending Triangle")
+            .expect("entry");
+        assert_eq!(triangle.state, PatternLifecycleState::Forming);
+    }
+
+    #[test]
+    fn chart_entries_confirm_on_breakout() {
+        let mut tracker = PatternLifecycleTracker::new();
+        let mut candles = candle_series(0, CandleInterval::OneMinute, 20);
+        if let Some(last) = candles.last_mut() {
+            last.close = 120.0;
+        }
+        let detection = chart_detection("Ascending Triangle", PatternClassification::Bullish);
+        let features = chart_features(100.0, 90.0);
+
+        let entries = tracker.apply_chart_detections(
+            "BTC",
+            CandleInterval::OneMinute,
+            &candles,
+            Some(&features),
+            &[detection],
+        );
+
+        let triangle = entries
+            .iter()
+            .find(|entry| entry.pattern == "Ascending Triangle")
+            .expect("entry");
+        assert_eq!(triangle.state, PatternLifecycleState::Confirmed);
     }
 }
