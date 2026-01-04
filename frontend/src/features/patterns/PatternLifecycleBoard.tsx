@@ -128,6 +128,9 @@ export const PatternLifecycleBoard = ({
                   <td className="px-4 py-4">
                     <div className="text-sm font-semibold text-slate-900">{entry.pattern}</div>
                     <div className="text-xs text-slate-500">{entry.classification}</div>
+                    {entry.notes ? (
+                      <div className="text-[11px] text-slate-400">{entry.notes}</div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-4">
                     <StatusPill

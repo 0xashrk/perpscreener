@@ -4,7 +4,7 @@ use tokio::time::interval;
 
 use crate::business_logic::patterns::lifecycle_tracker::PatternLifecycleTracker;
 use crate::models::interval::CandleInterval;
-use crate::models::patterns::PatternLifecycleSnapshot;
+use crate::models::patterns::{PatternLifecycleSnapshot, PatternLifecycleState};
 use crate::services::candle_store::{CandleKey, SharedCandleStore};
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::pattern_lifecycle_state::SharedPatternLifecycleState;
@@ -89,10 +89,34 @@ impl PatternLifecycleMonitor {
             entries: entries.clone(),
         };
 
+        log_confirmed_alerts(&entries, snapshot.as_of_ms);
+
         let mut guard = self.state.entries.write().await;
         *guard = entries;
         let _ = self.state.broadcaster.send(snapshot);
     }
+}
+
+fn log_confirmed_alerts(entries: &[crate::models::patterns::PatternLifecycleEntry], now_ms: u64) {
+    for entry in entries {
+        if is_new_confirmation(entry, now_ms) {
+            tracing::warn!(
+                "🔔 PATTERN CONFIRMED: {} {} {} ({:?}) confidence {:.1}%",
+                entry.coin,
+                entry.interval.as_str(),
+                entry.pattern,
+                entry.classification,
+                entry.confidence * 100.0
+            );
+        }
+    }
+}
+
+fn is_new_confirmation(
+    entry: &crate::models::patterns::PatternLifecycleEntry,
+    now_ms: u64,
+) -> bool {
+    entry.state == PatternLifecycleState::Confirmed && entry.state_since_ms == now_ms
 }
 
 #[cfg(test)]
@@ -103,6 +127,7 @@ mod tests {
     use crate::services::feature_store::FeatureStoreInner;
     use crate::services::pattern_lifecycle_state::PatternLifecycleStateInner;
     use crate::models::candle::Candle;
+    use crate::models::patterns::{PatternClassification, PatternSignalType, PatternLifecycleEntry};
 
     fn candle(close_time: u64) -> Candle {
         Candle {
@@ -147,5 +172,27 @@ mod tests {
 
         let guard = monitor.state.entries.read().await;
         assert!(!guard.is_empty());
+    }
+
+    #[test]
+    fn confirmation_filter_only_flags_new_confirmations() {
+        let entry = PatternLifecycleEntry {
+            coin: "BTC".to_string(),
+            interval: CandleInterval::OneMinute,
+            pattern: "Ascending Triangle".to_string(),
+            category: "chart_continuation".to_string(),
+            classification: PatternClassification::Bullish,
+            signal_type: PatternSignalType::Continuation,
+            state: PatternLifecycleState::Confirmed,
+            confidence: 0.7,
+            state_since_ms: 100,
+            last_updated_ms: 100,
+            window_start_ms: 0,
+            window_end_ms: 0,
+            notes: None,
+        };
+
+        assert!(is_new_confirmation(&entry, 100));
+        assert!(!is_new_confirmation(&entry, 200));
     }
 }
