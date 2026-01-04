@@ -53,8 +53,8 @@ export const PatternStateMachineTable = ({
     <section className="glass-panel rounded-3xl border border-white/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)]">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Live Screener</h2>
-          <p className="text-sm text-slate-500">{pattern} state snapshot per token</p>
+          <h2 className="text-xl font-semibold text-slate-900">{pattern}</h2>
+          <p className="text-sm text-slate-500">State snapshot per token</p>
         </div>
         <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
           {tokens.length} tokens
