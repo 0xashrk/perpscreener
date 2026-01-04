@@ -29,8 +29,8 @@
 | 5a | Core confidence heuristics (candlesticks, gaps, chart patterns) + tests | Completed |
 | 5b | Advanced confidence heuristics (Fibonacci, Elliott, fractals) + tests | Completed |
 | 5c | Frontend confidence context (tooltips/notes) + tests | Completed |
-| 6 | Per-pattern live state machines (all patterns) | Pending |
-| 6a | State machine registry + lifecycle schema + tests | Pending |
+| 6 | Per-pattern live state machines (all patterns) | In Progress |
+| 6a | State machine registry + lifecycle schema + tests | Completed |
 | 6b | Candlestick lifecycle tracking + tests | Pending |
 | 6c | Gap lifecycle tracking + tests | Pending |
 | 6d | Chart pattern lifecycle tracking + tests | Pending |

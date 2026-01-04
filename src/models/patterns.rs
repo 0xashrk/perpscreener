@@ -151,6 +151,49 @@ pub struct PatternSummarySignal {
     pub confidence: f64,
 }
 
+/// Lifecycle state for per-pattern tracking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub enum PatternLifecycleState {
+    #[serde(rename = "warming")]
+    Warming,
+    #[serde(rename = "watching")]
+    Watching,
+    #[serde(rename = "forming")]
+    Forming,
+    #[serde(rename = "confirmed")]
+    Confirmed,
+    #[serde(rename = "invalidated")]
+    Invalidated,
+    #[serde(rename = "expired")]
+    Expired,
+}
+
+/// Live lifecycle entry per coin/interval/pattern.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternLifecycleEntry {
+    pub coin: String,
+    pub interval: CandleInterval,
+    pub pattern: String,
+    pub category: String,
+    pub classification: PatternClassification,
+    pub signal_type: PatternSignalType,
+    pub state: PatternLifecycleState,
+    pub confidence: f64,
+    pub state_since_ms: u64,
+    pub last_updated_ms: u64,
+    pub window_start_ms: u64,
+    pub window_end_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+/// Snapshot of all lifecycle entries.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternLifecycleSnapshot {
+    pub as_of_ms: u64,
+    pub entries: Vec<PatternLifecycleEntry>,
+}
+
 /// Advanced pattern detection payload with heuristic context.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct AdvancedPatternDetection {
@@ -168,7 +211,7 @@ pub struct AdvancedPatternResponse {
     pub detections: Vec<AdvancedPatternDetection>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 pub enum PatternClassification {
     #[serde(rename = "bullish")]
     Bullish,

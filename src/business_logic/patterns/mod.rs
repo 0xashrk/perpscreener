@@ -5,6 +5,7 @@ pub mod candlesticks_bearish;
 pub mod candlesticks_bullish;
 pub mod chart_patterns;
 pub mod gaps;
+pub mod lifecycle_registry;
 
 use crate::models::patterns::{PatternClassification, PatternSignalType};
 
