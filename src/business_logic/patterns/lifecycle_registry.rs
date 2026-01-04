@@ -13,7 +13,9 @@ pub enum PatternLifecycleCategory {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PatternLifecycleDefinition {
     pub name: &'static str,
+    pub detector_name: &'static str,
     pub category: PatternLifecycleCategory,
+    pub category_label: &'static str,
     pub classification: PatternClassification,
     pub signal_type: PatternSignalType,
     pub window: usize,
@@ -27,7 +29,9 @@ pub fn pattern_registry() -> Vec<PatternLifecycleDefinition> {
         let window = candlestick_window(name);
         entries.push(PatternLifecycleDefinition {
             name,
+            detector_name: candlestick_detector_name(name),
             category: PatternLifecycleCategory::Candlestick,
+            category_label: "candlestick_reversal",
             classification: PatternClassification::Bullish,
             signal_type: PatternSignalType::Reversal,
             window,
@@ -39,7 +43,9 @@ pub fn pattern_registry() -> Vec<PatternLifecycleDefinition> {
         let window = candlestick_window(name);
         entries.push(PatternLifecycleDefinition {
             name,
+            detector_name: candlestick_detector_name(name),
             category: PatternLifecycleCategory::Candlestick,
+            category_label: "candlestick_reversal",
             classification: PatternClassification::Bearish,
             signal_type: PatternSignalType::Reversal,
             window,
@@ -50,7 +56,9 @@ pub fn pattern_registry() -> Vec<PatternLifecycleDefinition> {
     for &(name, classification, signal_type) in GAP_PATTERNS {
         entries.push(PatternLifecycleDefinition {
             name,
+            detector_name: name,
             category: PatternLifecycleCategory::Gap,
+            category_label: "gap",
             classification,
             signal_type,
             window: 2,
@@ -58,10 +66,12 @@ pub fn pattern_registry() -> Vec<PatternLifecycleDefinition> {
         });
     }
 
-    for &(name, classification, signal_type, window) in CHART_PATTERNS {
+    for &(name, classification, signal_type, category_label, window) in CHART_PATTERNS {
         entries.push(PatternLifecycleDefinition {
             name,
+            detector_name: name,
             category: PatternLifecycleCategory::Chart,
+            category_label,
             classification,
             signal_type,
             window,
@@ -69,10 +79,12 @@ pub fn pattern_registry() -> Vec<PatternLifecycleDefinition> {
         });
     }
 
-    for &(name, classification, signal_type, window) in ADVANCED_PATTERNS {
+    for &(name, classification, signal_type, category_label, window) in ADVANCED_PATTERNS {
         entries.push(PatternLifecycleDefinition {
             name,
+            detector_name: name,
             category: PatternLifecycleCategory::Advanced,
+            category_label,
             classification,
             signal_type,
             window,
@@ -145,6 +157,16 @@ fn candlestick_window(name: &str) -> usize {
         "Downside Gap Three Methods" => 3,
         "Downside Tasuki Gap" => 3,
         _ => 3,
+    }
+}
+
+fn candlestick_detector_name(name: &'static str) -> &'static str {
+    match name {
+        "Hammer / Dragonfly Doji" => "Hammer",
+        "Dragonfly Doji / Hanging Man" => "Hanging Man",
+        "Grave Stone Doji / Shooting Star" => "Shooting Star",
+        "Side-by-side White Lines" => "Side by Side White Lines",
+        _ => name,
     }
 }
 
@@ -271,120 +293,140 @@ const CHART_PATTERNS: &[(
     &str,
     PatternClassification,
     PatternSignalType,
+    &str,
     usize,
 )] = &[
     (
         "Ascending Triangle",
         PatternClassification::Bullish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Descending Triangle",
         PatternClassification::Bearish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Symmetrical Triangle",
         PatternClassification::Neutral,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Bull Flag",
         PatternClassification::Bullish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Bear Flag",
         PatternClassification::Bearish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Bull Pennant",
         PatternClassification::Bullish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Bear Pennant",
         PatternClassification::Bearish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         10,
     ),
     (
         "Rising Wedge",
         PatternClassification::Bearish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         10,
     ),
     (
         "Falling Wedge",
         PatternClassification::Bullish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         10,
     ),
     (
         "Ascending Channel",
         PatternClassification::Bullish,
         PatternSignalType::Trend,
+        "channel",
         10,
     ),
     (
         "Descending Channel",
         PatternClassification::Bearish,
         PatternSignalType::Trend,
+        "channel",
         10,
     ),
     (
         "Horizontal Channel",
         PatternClassification::Neutral,
         PatternSignalType::Range,
+        "channel",
         10,
     ),
     (
         "Head and Shoulders",
         PatternClassification::Bearish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         20,
     ),
     (
         "Inverse Head and Shoulders",
         PatternClassification::Bullish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         20,
     ),
     (
         "Double Top",
         PatternClassification::Bearish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         15,
     ),
     (
         "Double Bottom",
         PatternClassification::Bullish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         15,
     ),
     (
         "Triple Top",
         PatternClassification::Bearish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         20,
     ),
     (
         "Triple Bottom",
         PatternClassification::Bullish,
         PatternSignalType::Reversal,
+        "chart_reversal",
         20,
     ),
     (
         "Cup and Handle",
         PatternClassification::Bullish,
         PatternSignalType::Continuation,
+        "chart_continuation",
         25,
     ),
 ];
@@ -393,54 +435,63 @@ const ADVANCED_PATTERNS: &[(
     &str,
     PatternClassification,
     PatternSignalType,
+    &str,
     usize,
 )] = &[
     (
         "Fibonacci 38.2% Retracement",
         PatternClassification::Neutral,
         PatternSignalType::KeyLevel,
+        "fibonacci_retracement",
         10,
     ),
     (
         "Fibonacci 50% Retracement",
         PatternClassification::Neutral,
         PatternSignalType::KeyLevel,
+        "fibonacci_retracement",
         10,
     ),
     (
         "Fibonacci 61.8% Retracement",
         PatternClassification::Neutral,
         PatternSignalType::KeyLevel,
+        "fibonacci_retracement",
         10,
     ),
     (
         "Elliott Wave 1-2-3-4-5 (Up)",
         PatternClassification::Bullish,
         PatternSignalType::Impulse,
+        "elliott_wave",
         30,
     ),
     (
         "Elliott Wave 1-2-3-4-5 (Down)",
         PatternClassification::Bearish,
         PatternSignalType::Impulse,
+        "elliott_wave",
         30,
     ),
     (
         "Elliott Wave A-B-C",
         PatternClassification::Neutral,
         PatternSignalType::Correction,
+        "elliott_wave",
         20,
     ),
     (
         "Williams Fractal (Up)",
         PatternClassification::Bearish,
         PatternSignalType::Reversal,
+        "williams_fractal",
         5,
     ),
     (
         "Williams Fractal (Down)",
         PatternClassification::Bullish,
         PatternSignalType::Reversal,
+        "williams_fractal",
         5,
     ),
 ];

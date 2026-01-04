@@ -31,7 +31,7 @@
 | 5c | Frontend confidence context (tooltips/notes) + tests | Completed |
 | 6 | Per-pattern live state machines (all patterns) | In Progress |
 | 6a | State machine registry + lifecycle schema + tests | Completed |
-| 6b | Candlestick lifecycle tracking + tests | Pending |
+| 6b | Candlestick lifecycle tracking + tests | Completed |
 | 6c | Gap lifecycle tracking + tests | Pending |
 | 6d | Chart pattern lifecycle tracking + tests | Pending |
 | 6e | Advanced lifecycle tracking + tests | Pending |
