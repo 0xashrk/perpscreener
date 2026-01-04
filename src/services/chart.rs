@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 
 use crate::models::chart::ChartSnapshot;
-use crate::models::interval::interval_ms;
+use crate::models::interval::CandleInterval;
 use crate::services::candles::normalize_candles;
 use crate::services::hyperliquid::HyperliquidClient;
 
@@ -22,24 +22,24 @@ impl ChartService {
     pub async fn fetch_snapshot(
         &self,
         coin: &str,
-        interval: &str,
+        interval: CandleInterval,
         limit: usize,
     ) -> anyhow::Result<ChartSnapshot> {
         let now_ms = chrono::Utc::now().timestamp_millis() as u64;
-        let interval_ms = interval_ms(interval).context("unsupported interval")?;
+        let interval_ms = interval.ms();
         let (start_time, end_time) = build_time_range(now_ms, interval_ms, limit);
 
         let mut candles = self
             .client
-            .fetch_candles(coin, interval, start_time, end_time)
+            .fetch_candles(coin, interval.as_str(), start_time, end_time)
             .await
             .context("failed to fetch candle snapshot")?;
-        normalize_candles(&mut candles, coin, interval);
+        normalize_candles(&mut candles, coin, interval.as_str());
 
         Ok(ChartSnapshot {
             as_of_ms: now_ms,
             coin: coin.to_string(),
-            interval: interval.to_string(),
+            interval,
             candles,
         })
     }

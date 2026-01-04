@@ -4,3 +4,14 @@
 .vscode/
 *.log
 .claude/settings.local.json
+
+.DS_Store
+**/.DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# OpenAPI output
+openapi/

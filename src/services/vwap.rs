@@ -1,15 +1,29 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use chrono::{Datelike, Duration, Timelike, Utc};
+use thiserror::Error;
 
 use crate::business_logic::vwap::compute_vwap;
 use crate::models::candle::Candle;
+use crate::models::interval::CandleInterval;
 use crate::models::vwap::{VwapEntry, VwapSnapshot, VwapTimeframe};
 use crate::services::candles::normalize_candles;
 use crate::services::hyperliquid::HyperliquidClient;
 
 const MAX_CANDLES: u64 = 5000;
+
+/// Errors returned by the VWAP service.
+#[derive(Debug, Error)]
+pub enum VwapError {
+    #[error("invalid coin: {coin}")]
+    InvalidCoin { coin: String },
+    #[error("no closed candles available")]
+    NoClosedCandles,
+    #[error("no vwap data for timeframe {timeframe}")]
+    NoVwapData { timeframe: String },
+    #[error("upstream error: {message}")]
+    Upstream { message: String },
+}
 
 /// Service for assembling VWAP snapshots from candle data.
 pub struct VwapService {
@@ -25,28 +39,36 @@ impl VwapService {
     pub async fn fetch_snapshot(
         &self,
         coin: &str,
-        interval: &str,
-        interval_ms: u64,
+        interval: CandleInterval,
         timeframes: &[VwapTimeframe],
         bands: bool,
-    ) -> anyhow::Result<VwapSnapshot> {
+    ) -> Result<VwapSnapshot, VwapError> {
         let now = chrono::Utc::now();
         let now_ms = now.timestamp_millis() as u64;
         let anchor_ms = earliest_anchor_ms(timeframes, now);
+        let interval_ms = interval.ms();
 
         let mut candles = self
             .client
-            .fetch_candles(coin, interval, anchor_ms, now_ms)
+            .fetch_candles(coin, interval.as_str(), anchor_ms, now_ms)
             .await
-            .context("failed to fetch candle snapshot")?;
+            .map_err(|error| VwapError::Upstream {
+                message: error.to_string(),
+            })?;
 
-        normalize_candles(&mut candles, coin, interval);
+        if candles.is_empty() {
+            return Err(VwapError::InvalidCoin {
+                coin: coin.to_string(),
+            });
+        }
+
+        normalize_candles(&mut candles, coin, interval.as_str());
 
         let closed = filter_closed_candles(&candles, now_ms, interval_ms);
         let current_price = closed
             .last()
             .map(|candle| candle.close)
-            .context("no closed candles available")?;
+            .ok_or(VwapError::NoClosedCandles)?;
 
         let mut vwaps = Vec::with_capacity(timeframes.len());
         for timeframe in timeframes {
@@ -57,8 +79,9 @@ impl VwapService {
                 .cloned()
                 .collect();
 
-            let result = compute_vwap(&window)
-                .with_context(|| format!("no vwap data for timeframe {}", timeframe.as_str()))?;
+            let result = compute_vwap(&window).ok_or_else(|| VwapError::NoVwapData {
+                timeframe: timeframe.as_str().to_string(),
+            })?;
 
             let distance_pct =
                 ((current_price - result.vwap).abs() / result.vwap.max(f64::EPSILON)) * 100.0;
@@ -80,7 +103,7 @@ impl VwapService {
             };
 
             vwaps.push(VwapEntry {
-                timeframe: timeframe.as_str().to_string(),
+                timeframe: *timeframe,
                 anchor_time_ms,
                 vwap: result.vwap,
                 cumulative_volume: result.cumulative_volume,
@@ -118,7 +141,7 @@ pub fn ensure_timeframes_covered(
         let required = required_candles(anchor, now_ms, interval_ms);
         if required > MAX_CANDLES {
             return Err(format!(
-                "timeframe {} requires {} candles with interval; max is {}",
+                "timeframe {} requires {} candles at the selected interval; max is {}. Use a larger interval.",
                 timeframe.as_str(),
                 required,
                 MAX_CANDLES
@@ -224,5 +247,14 @@ mod tests {
             .unwrap()
             .timestamp_millis() as u64;
         assert_eq!(anchor, expected);
+    }
+
+    #[test]
+    fn ensure_timeframes_covered_mentions_larger_interval() {
+        let now = chrono::Utc.with_ymd_and_hms(2025, 2, 15, 12, 0, 0).unwrap();
+        let now_ms = now.timestamp_millis() as u64;
+        let error =
+            ensure_timeframes_covered(&[VwapTimeframe::Monthly], 60_000, now_ms).unwrap_err();
+        assert!(error.contains("Use a larger interval."));
     }
 }

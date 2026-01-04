@@ -1,0 +1,45 @@
+# Candle snapshot
+
+<mark style="color:green;">`POST`</mark> `https://api.hyperliquid.xyz/info`
+
+Only the most recent 5000 candles are available
+
+Supported intervals: "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "8h", "12h", "1d", "3d", "1w", "1M"
+
+**Headers**
+
+| Name                                           | Value              |
+| ---------------------------------------------- | ------------------ |
+| Content-Type<mark style="color:red;">\*</mark> | "application/json" |
+
+**Body**
+
+| Name                                   | Type   | Description                                                                                    |
+| -------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| type<mark style="color:red;">\*</mark> | String | "candleSnapshot"                                                                               |
+| req<mark style="color:red;">\*</mark>  | Object | {"coin": \<coin>, "interval": "15m", "startTime": \<epoch millis>, "endTime": \<epoch millis>} |
+
+**Response**
+
+{% tabs %}
+{% tab title="200: OK" %}
+
+```json
+[
+  {
+    "T": 1681924499999,
+    "c": "29258.0",
+    "h": "29309.0",
+    "i": "15m",
+    "l": "29250.0",
+    "n": 189,
+    "o": "29295.0",
+    "s": "BTC",
+    "t": 1681923600000,
+    "v": "0.98639"
+  }
+]
+```
+
+{% endtab %}
+{% endtabs %}

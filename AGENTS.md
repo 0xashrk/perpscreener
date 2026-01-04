@@ -12,6 +12,9 @@ Guidelines:
 
 Frontend code lives in this repo under `frontend/`.
 
+Backend endpoint details live in `openapi/`.
+Use `openapi/backend_openapi.outline.json` for general details and `openapi/backend_openapi.json` for full details.
+
 ---
 
 ## Project Hierarchy
@@ -41,3 +44,7 @@ Folder docs:
 
 - Always add tests for new or changed behavior.
 - Keep code modularized: isolate features, keep layers clean, avoid large mixed-responsibility files.
+
+## Development
+
+- Prefer `bacon run` for auto rebuild/restart during dev; refresh Swagger UI after restarts to pick up OpenAPI changes.
