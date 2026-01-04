@@ -110,7 +110,14 @@ async fn main() {
         patterns: RwLock::new(Vec::new()),
         broadcaster,
     });
-    let coins = vec!["BTC".to_string(), "ETH".to_string(), "SOL".to_string()];
+    let coins = vec![
+        "BTC".to_string(),
+        "ETH".to_string(),
+        "SOL".to_string(),
+        "MON".to_string(),
+        "ZEC".to_string(),
+        "HYPE".to_string(),
+    ];
     let ingestion_config = CandleIngestionConfig::new(coins.clone());
     let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
     let core_pattern_intervals = ingestion_config.intervals.clone();
