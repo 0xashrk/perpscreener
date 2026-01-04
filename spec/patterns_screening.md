@@ -29,6 +29,15 @@
 | 5a | Core confidence heuristics (candlesticks, gaps, chart patterns) + tests | Completed |
 | 5b | Advanced confidence heuristics (Fibonacci, Elliott, fractals) + tests | Completed |
 | 5c | Frontend confidence context (tooltips/notes) + tests | Completed |
+| 6 | Per-pattern live state machines (all patterns) | Pending |
+| 6a | State machine registry + lifecycle schema + tests | Pending |
+| 6b | Candlestick lifecycle tracking + tests | Pending |
+| 6c | Gap lifecycle tracking + tests | Pending |
+| 6d | Chart pattern lifecycle tracking + tests | Pending |
+| 6e | Advanced lifecycle tracking + tests | Pending |
+| 6f | Lifecycle snapshots over REST/SSE + tests | Pending |
+| 6g | Frontend live pattern board (double-top parity) + tests | Pending |
+| 6h | Alerts + UX polish + tests | Pending |
 
 ---
 
@@ -147,6 +156,23 @@ Deliverables:
 - Core pattern confidence heuristics for candlesticks, gaps, and chart patterns.
 - Advanced confidence heuristics for Fibonacci, Elliott, and fractal detections.
 - Frontend displays confidence context (notes/tooltips) sourced from backend `notes`.
+
+### Phase 6: Per-Pattern Live State Machines
+
+Scope:
+- Derive lifecycle states for every pattern in `spec/patterns/trading_patterns_documentation.md`.
+- Track per-pattern state transitions (forming → confirmed → invalidated) in real time.
+- Expose lifecycle snapshots over REST + SSE for the pattern screening UI.
+- Build a live board in the pattern screening UI that mirrors the double-top panel behavior.
+
+Deliverables:
+- Shared lifecycle schema + registry describing all patterns and per-candle rules.
+- State machine runners for candlesticks, gaps, chart patterns, and advanced patterns.
+- Live lifecycle snapshots over REST + SSE (initial + incremental updates).
+- Frontend live board with per-pattern state, confidence, and top signals.
+
+Spec:
+- `spec/patterns/pattern_state_machines.md`
 
 ---
 
