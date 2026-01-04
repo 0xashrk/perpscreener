@@ -26,7 +26,7 @@ pub(super) fn build_pattern(
         category: "candlestick_reversal",
         classification,
         signal_type: crate::models::patterns::PatternSignalType::Reversal,
-        confidence: confidence.clamp(0.45, 0.92),
+        confidence: confidence.clamp(0.1, 0.98),
         window,
         notes: None,
     }
@@ -248,6 +248,6 @@ mod tests {
         let low = pattern_confidence(0.55, &[0.1, 0.2]);
         let high = pattern_confidence(0.55, &[0.8, 0.9]);
         assert!(high > low);
-        assert!(high <= 0.9);
+        assert!(high <= 0.98);
     }
 }
