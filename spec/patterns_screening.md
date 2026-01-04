@@ -32,7 +32,7 @@
 | 6 | Per-pattern live state machines (all patterns) | In Progress |
 | 6a | State machine registry + lifecycle schema + tests | Completed |
 | 6b | Candlestick lifecycle tracking + tests | Completed |
-| 6c | Gap lifecycle tracking + tests | Pending |
+| 6c | Gap lifecycle tracking + tests | Completed |
 | 6d | Chart pattern lifecycle tracking + tests | Pending |
 | 6e | Advanced lifecycle tracking + tests | Pending |
 | 6f | Lifecycle snapshots over REST/SSE + tests | Pending |
