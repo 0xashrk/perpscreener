@@ -194,6 +194,23 @@ pub struct PatternLifecycleSnapshot {
     pub entries: Vec<PatternLifecycleEntry>,
 }
 
+/// Registry entry for known pattern state machines.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternRegistryEntry {
+    pub pattern: String,
+    pub category: String,
+    pub classification: PatternClassification,
+    pub signal_type: PatternSignalType,
+    pub window: usize,
+    pub max_age_bars: usize,
+}
+
+/// Registry response listing available pattern state machines.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PatternRegistryResponse {
+    pub entries: Vec<PatternRegistryEntry>,
+}
+
 /// Advanced pattern detection payload with heuristic context.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct AdvancedPatternDetection {

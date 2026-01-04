@@ -52,6 +52,15 @@ export type PatternLifecycleSnapshot = {
   entries: PatternLifecycleEntry[];
 };
 
+export type PatternRegistryEntry = {
+  pattern: string;
+  category: string;
+  classification: PatternClassification;
+  signalType: PatternSignalType;
+  window: number;
+  maxAgeBars: number;
+};
+
 export type PatternSnapshot = {
   asOfMs: number;
   detections: PatternDetection[];

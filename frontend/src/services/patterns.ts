@@ -4,6 +4,7 @@ import {
   PatternDetection,
   PatternLifecycleEntry,
   PatternLifecycleSnapshot,
+  PatternRegistryEntry,
   PatternSnapshot,
   PatternSummary,
   PatternSummarySignal,
@@ -154,6 +155,39 @@ const parseLifecycleEntry = (item: JsonObject): PatternLifecycleEntry | null => 
     windowStartMs,
     windowEndMs,
     notes: typeof notes === "string" ? notes : ""
+  };
+};
+
+const parseRegistryEntry = (item: JsonObject): PatternRegistryEntry | null => {
+  const pattern = item["pattern"];
+  const category = item["category"];
+  const classification = item["classification"];
+  const signalType = item["signal_type"];
+  const window = item["window"];
+  const maxAgeBars = item["max_age_bars"];
+
+  if (
+    typeof pattern !== "string" ||
+    typeof category !== "string" ||
+    typeof classification !== "string" ||
+    typeof signalType !== "string" ||
+    typeof window !== "number" ||
+    typeof maxAgeBars !== "number"
+  ) {
+    return null;
+  }
+
+  if (!isClassification(classification) || !isSignalType(signalType)) {
+    return null;
+  }
+
+  return {
+    pattern,
+    category,
+    classification,
+    signalType,
+    window,
+    maxAgeBars
   };
 };
 
@@ -309,6 +343,30 @@ const parseLifecycleSnapshot = (data: JsonValue): PatternLifecycleSnapshot => {
   return { asOfMs, entries };
 };
 
+const parseRegistry = (data: JsonValue): PatternRegistryEntry[] => {
+  if (!isObject(data)) {
+    throw new Error("Invalid registry payload");
+  }
+
+  const entriesRaw = data["entries"];
+  if (!Array.isArray(entriesRaw)) {
+    throw new Error("Missing registry entries");
+  }
+
+  const entries: PatternRegistryEntry[] = [];
+  entriesRaw.forEach((item) => {
+    if (!isObject(item)) {
+      return;
+    }
+    const parsed = parseRegistryEntry(item);
+    if (parsed) {
+      entries.push(parsed);
+    }
+  });
+
+  return entries;
+};
+
 export const parsePatternSnapshot = (data: string): ParseResult<PatternSnapshot> => {
   try {
     const parsed = JSON.parse(data) as JsonValue;
@@ -390,4 +448,15 @@ export const fetchPatternSnapshot = async (query: PatternQuery): Promise<Pattern
 
   const json = (await response.json()) as JsonValue;
   return parseSnapshot(json);
+};
+
+export const fetchPatternRegistry = async (): Promise<PatternRegistryEntry[]> => {
+  const url = buildApiUrl("/patterns/registry", {});
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to load pattern registry");
+  }
+
+  const json = (await response.json()) as JsonValue;
+  return parseRegistry(json);
 };

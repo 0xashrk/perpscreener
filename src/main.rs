@@ -20,6 +20,7 @@ use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
 use crate::handlers::pattern_lifecycle::{get_pattern_lifecycle, get_pattern_lifecycle_stream};
+use crate::handlers::pattern_registry::get_pattern_registry;
 use crate::handlers::patterns::{get_patterns, get_patterns_stream};
 use crate::handlers::vwap::{get_vwap_snapshot, get_vwap_stream};
 use crate::models::candle::Candle;
@@ -30,8 +31,8 @@ use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList,
     PatternClassification, PatternDetection, PatternLifecycleEntry, PatternLifecycleSnapshot,
-    PatternLifecycleState, PatternQuery, PatternResponse, PatternSignalType, PatternSummary,
-    PatternSummarySignal,
+    PatternLifecycleState, PatternQuery, PatternRegistryEntry, PatternRegistryResponse, PatternResponse,
+    PatternSignalType, PatternSummary, PatternSummarySignal,
 };
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::advanced_pattern_monitor::{
@@ -60,6 +61,7 @@ use crate::state::AppState;
         handlers::double_top::get_double_top_stream,
         handlers::patterns::get_patterns,
         handlers::patterns::get_patterns_stream,
+        handlers::pattern_registry::get_pattern_registry,
         handlers::pattern_lifecycle::get_pattern_lifecycle,
         handlers::pattern_lifecycle::get_pattern_lifecycle_stream,
         handlers::advanced_patterns::get_advanced_patterns,
@@ -90,6 +92,8 @@ use crate::state::AppState;
         PatternLifecycleSnapshot,
         PatternLifecycleEntry,
         PatternLifecycleState,
+        PatternRegistryEntry,
+        PatternRegistryResponse,
         AdvancedPatternResponse,
         AdvancedPatternDetection,
         PatternClassification,
@@ -225,6 +229,7 @@ async fn main() {
     let pattern_routes = Router::new()
         .route("/", get(get_patterns))
         .route("/stream", get(get_patterns_stream))
+        .route("/registry", get(get_pattern_registry))
         .route("/lifecycle", get(get_pattern_lifecycle))
         .route("/lifecycle/stream", get(get_pattern_lifecycle_stream));
     let advanced_pattern_routes = Router::new()

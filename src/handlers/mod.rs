@@ -10,6 +10,8 @@ pub mod health;
 pub mod patterns;
 /// Live pattern lifecycle handlers.
 pub mod pattern_lifecycle;
+/// Pattern registry handler.
+pub mod pattern_registry;
 /// Shared query extractors.
 pub mod query;
 /// VWAP streaming handlers.

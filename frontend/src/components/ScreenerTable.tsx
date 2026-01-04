@@ -67,28 +67,59 @@ export const ScreenerTable = ({
         </span>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Double Top States
-        </span>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          <div>
-            <span className="font-semibold text-slate-700">Watching</span> — waiting for a first peak.
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Double Top States
+          </span>
+          <div className="mt-3 grid gap-2">
+            <div>
+              <span className="font-semibold text-slate-700">Watching</span> — waiting for a first peak.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Peak Found</span> — first peak confirmed.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Trough Found</span> — pullback/neckline formed.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Forming</span> — price approaching the first peak.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Confirmed</span> — breakdown below neckline.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Invalidated</span> — pattern failed (broke above peak or timed out).
+            </div>
           </div>
-          <div>
-            <span className="font-semibold text-slate-700">Peak Found</span> — first peak confirmed.
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700">Trough Found</span> — pullback/neckline formed.
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700">Forming</span> — price approaching the first peak.
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700">Confirmed</span> — breakdown below neckline.
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700">Invalidated</span> — pattern failed (broke above peak or timed out).
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Pattern Lifecycle States
+          </span>
+          <p className="mt-1 text-xs text-slate-400">
+            Candlesticks · Gaps · Chart Patterns · Advanced
+          </p>
+          <div className="mt-3 grid gap-2">
+            <div>
+              <span className="font-semibold text-slate-700">Warming</span> — collecting initial candle data.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Watching</span> — monitoring for pattern formation.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Forming</span> — pattern detected, awaiting confirmation.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Confirmed</span> — pattern validated with breakout/signal.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Invalidated</span> — pattern failed validation criteria.
+            </div>
+            <div>
+              <span className="font-semibold text-slate-700">Expired</span> — confirmed pattern aged out.
+            </div>
           </div>
         </div>
       </div>

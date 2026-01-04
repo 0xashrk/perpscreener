@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { HeaderBar } from "./components/HeaderBar";
 import { ScreenerTable } from "./components/ScreenerTable";
 import { PatternScreeningPage } from "./features/patterns/PatternScreeningPage";
+import { PatternStateMachineStack } from "./features/screener/PatternStateMachineStack";
 import { useHashRoute } from "./hooks/useHashRoute";
 import { useDoubleTopStream } from "./hooks/useDoubleTopStream";
 import { useNow } from "./hooks/useNow";
@@ -115,6 +116,7 @@ const App = () => {
               timeframes={timeframesInScope}
               nowMs={nowMs}
             />
+            <PatternStateMachineStack tokens={tokensInScope} nowMs={nowMs} />
           </>
         )}
       </div>
