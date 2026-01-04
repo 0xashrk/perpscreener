@@ -8,7 +8,7 @@ import { createDefaultWeightConfig, summarizeDetections } from "../../utils/patt
 import { AdvancedPatternList } from "./AdvancedPatternList";
 import { PatternFilters } from "./PatternFilters";
 import { PatternList } from "./PatternList";
-import { PatternScreeningStub } from "./PatternScreeningStub";
+import { PatternLiveCanvas } from "./PatternLiveCanvas";
 import { PatternSummaryPanel } from "./PatternSummaryPanel";
 import { PatternLifecycleBoard } from "./PatternLifecycleBoard";
 import { PatternWeightControls } from "./PatternWeightControls";
@@ -192,8 +192,16 @@ export const PatternScreeningPage = () => {
             activeIntervals={intervalsInScope}
             onToggleInterval={handleToggleInterval}
           />
-          <PatternScreeningStub
-            signals={(activePanel === "core" ? sortedDetections : sortedAdvanced).slice(0, 3)}
+          <PatternLiveCanvas
+            signals={(activePanel === "core" ? sortedDetections : sortedAdvanced).map(
+              (signal) => ({
+                pattern: signal.pattern,
+                coin: signal.coin,
+                interval: signal.interval,
+                detectedAtMs: signal.detectedAtMs,
+                windowEndMs: signal.windowEndMs
+              })
+            )}
             status={activePanel === "core" ? stream.status : advancedStream.status}
             lastUpdatedMs={
               activePanel === "core" ? stream.snapshot.asOfMs : advancedStream.snapshot.asOfMs

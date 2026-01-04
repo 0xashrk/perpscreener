@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { PATTERN_INTERVALS } from "../../config";
 import { usePatternLifecycleStream } from "../../hooks/usePatternLifecycleStream";
 import { usePatternRegistry } from "../../hooks/usePatternRegistry";
 import { PatternLifecycleEntry, PatternRegistryEntry } from "../../types/patterns";
@@ -14,6 +15,17 @@ const formatCategory = (value: string): string =>
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(" ");
 
+const intervalOrder = new Map(PATTERN_INTERVALS.map((interval, index) => [interval, index]));
+
+const sortByInterval = (a: PatternLifecycleEntry, b: PatternLifecycleEntry): number => {
+  const rankA = intervalOrder.get(a.interval) ?? Number.MAX_SAFE_INTEGER;
+  const rankB = intervalOrder.get(b.interval) ?? Number.MAX_SAFE_INTEGER;
+  if (rankA !== rankB) {
+    return rankA - rankB;
+  }
+  return b.lastUpdatedMs - a.lastUpdatedMs;
+};
+
 const buildPatternKey = (entry: {
   pattern: string;
   category: string;
@@ -24,9 +36,12 @@ const buildPatternGroups = (
   registry: PatternRegistryEntry[],
   entries: PatternLifecycleEntry[],
   tokens: string[]
-): Array<{ key: string; pattern: string; entriesByToken: Record<string, PatternLifecycleEntry> }> => {
+): Array<{ key: string; pattern: string; entriesByToken: Record<string, PatternLifecycleEntry[]> }> => {
   const tokenSet = new Set(tokens);
-  const groupedEntries = new Map<string, Record<string, PatternLifecycleEntry>>();
+  const groupedEntries = new Map<
+    string,
+    Map<string, Map<string, PatternLifecycleEntry>>
+  >();
   const patternCounts = new Map<string, number>();
   const classificationCounts = new Map<string, number>();
 
@@ -44,14 +59,16 @@ const buildPatternGroups = (
       return;
     }
     const key = buildPatternKey(entry);
-    const existing = groupedEntries.get(key) ?? {};
-    const current = existing[entry.coin];
+    const tokenMap = groupedEntries.get(key) ?? new Map<string, Map<string, PatternLifecycleEntry>>();
+    const intervalMap = tokenMap.get(entry.coin) ?? new Map<string, PatternLifecycleEntry>();
+    const current = intervalMap.get(entry.interval);
 
     if (!current || entry.lastUpdatedMs > current.lastUpdatedMs) {
-      existing[entry.coin] = entry;
+      intervalMap.set(entry.interval, entry);
     }
 
-    groupedEntries.set(key, existing);
+    tokenMap.set(entry.coin, intervalMap);
+    groupedEntries.set(key, tokenMap);
   });
 
   return registry
@@ -68,10 +85,20 @@ const buildPatternGroups = (
       } else if (patternCount > 1) {
         label = `${entry.pattern} (${formatClassification(entry.classification)})`;
       }
+      const tokenMap = groupedEntries.get(key);
+      const entriesByToken: Record<string, PatternLifecycleEntry[]> = {};
+
+      if (tokenMap) {
+        tokenMap.forEach((intervalMap, token) => {
+          const sorted = Array.from(intervalMap.values()).sort(sortByInterval);
+          entriesByToken[token] = sorted;
+        });
+      }
+
       return {
         key,
         pattern: label,
-        entriesByToken: groupedEntries.get(key) ?? {}
+        entriesByToken
       };
     })
     .sort((a, b) => a.pattern.localeCompare(b.pattern));

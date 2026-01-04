@@ -26,6 +26,14 @@ vi.mock("../hooks/usePatternLifecycleStream", () => ({
   })
 }));
 
+vi.mock("../hooks/useChartStream", () => ({
+  useChartStream: () => ({
+    status: "open",
+    snapshot: { asOfMs: 0, coin: "BTC", interval: "1m", candles: [] },
+    error: ""
+  })
+}));
+
 describe("PatternScreeningPage", () => {
   it("renders the pattern screening header copy", () => {
     render(<PatternScreeningPage />);
