@@ -7,13 +7,14 @@ use crate::models::patterns::{
 };
 use crate::business_logic::features::{FeatureSnapshot, Trendline, TrendlineKind};
 
+use super::advanced::detect_advanced_patterns;
 use super::candlesticks::detect_candlestick_patterns;
 use super::gaps::detect_gap_patterns;
 use super::chart_patterns::detect_chart_patterns;
 use super::lifecycle_registry::{
     pattern_registry, PatternLifecycleCategory, PatternLifecycleDefinition,
 };
-use super::DetectedPattern;
+use super::{AdvancedDetectedPattern, DetectedPattern};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct PatternLifecycleKey {
@@ -28,6 +29,7 @@ pub struct PatternLifecycleTracker {
     candlestick_defs: Vec<PatternLifecycleDefinition>,
     gap_defs: Vec<PatternLifecycleDefinition>,
     chart_defs: Vec<PatternLifecycleDefinition>,
+    advanced_defs: Vec<PatternLifecycleDefinition>,
     entries: HashMap<PatternLifecycleKey, PatternLifecycleEntry>,
     gap_context: HashMap<PatternLifecycleKey, GapContext>,
 }
@@ -50,10 +52,16 @@ impl PatternLifecycleTracker {
             .copied()
             .filter(|def| def.category == PatternLifecycleCategory::Chart)
             .collect();
+        let advanced_defs = definitions
+            .iter()
+            .copied()
+            .filter(|def| def.category == PatternLifecycleCategory::Advanced)
+            .collect();
         Self {
             candlestick_defs,
             gap_defs,
             chart_defs,
+            advanced_defs,
             entries: HashMap::new(),
             gap_context: HashMap::new(),
         }
@@ -88,6 +96,17 @@ impl PatternLifecycleTracker {
     ) -> Vec<PatternLifecycleEntry> {
         let detections = detect_chart_patterns(candles, features, interval);
         self.apply_chart_detections(coin, interval, candles, features, &detections)
+    }
+
+    pub fn update_advanced_patterns(
+        &mut self,
+        coin: &str,
+        interval: CandleInterval,
+        candles: &[Candle],
+        features: Option<&FeatureSnapshot>,
+    ) -> Vec<PatternLifecycleEntry> {
+        let detections = detect_advanced_patterns(candles, features);
+        self.apply_advanced_detections(coin, interval, candles, &detections)
     }
 
     fn apply_candlestick_detections(
@@ -224,6 +243,47 @@ impl PatternLifecycleTracker {
 
         updated
     }
+
+    fn apply_advanced_detections(
+        &mut self,
+        coin: &str,
+        interval: CandleInterval,
+        candles: &[Candle],
+        detections: &[AdvancedDetectedPattern],
+    ) -> Vec<PatternLifecycleEntry> {
+        let now_ms = candles.last().map(|c| c.close_time).unwrap_or(0);
+        let detection_map = advanced_detection_map(detections);
+        let mut updated = Vec::new();
+
+        for def in &self.advanced_defs {
+            let key = PatternLifecycleKey {
+                coin: coin.to_string(),
+                interval,
+                pattern: def.name.to_string(),
+                classification: def.classification,
+            };
+
+            let detection = detection_map
+                .get(&(def.detector_name, def.classification))
+                .copied();
+            let entry = self.entries.get(&key).cloned();
+
+            let next = next_advanced_entry(
+                &key,
+                def,
+                interval,
+                now_ms,
+                candles,
+                entry,
+                detection,
+            );
+
+            self.entries.insert(key, next.clone());
+            updated.push(next);
+        }
+
+        updated
+    }
 }
 
 fn candlestick_detection_map(
@@ -239,6 +299,16 @@ fn candlestick_detection_map(
 fn chart_detection_map(
     detections: &[DetectedPattern],
 ) -> HashMap<(&'static str, PatternClassification), &DetectedPattern> {
+    let mut map = HashMap::new();
+    for detection in detections {
+        map.insert((detection.pattern, detection.classification), detection);
+    }
+    map
+}
+
+fn advanced_detection_map(
+    detections: &[AdvancedDetectedPattern],
+) -> HashMap<(&'static str, PatternClassification), &AdvancedDetectedPattern> {
     let mut map = HashMap::new();
     for detection in detections {
         map.insert((detection.pattern, detection.classification), detection);
@@ -625,6 +695,96 @@ fn next_chart_entry(
     }
 }
 
+fn next_advanced_entry(
+    key: &PatternLifecycleKey,
+    def: &PatternLifecycleDefinition,
+    interval: CandleInterval,
+    now_ms: u64,
+    candles: &[Candle],
+    previous: Option<PatternLifecycleEntry>,
+    detection: Option<&AdvancedDetectedPattern>,
+) -> PatternLifecycleEntry {
+    if candles.len() < def.window {
+        return build_entry(
+            key,
+            def,
+            PatternLifecycleState::Warming,
+            previous,
+            now_ms,
+            0.0,
+            0,
+            0,
+            None,
+        );
+    }
+
+    if let Some(detection) = detection {
+        let (window_start_ms, window_end_ms) = window_bounds(candles, detection.window);
+        let note = Some(format!(
+            "method={}, basis={}",
+            detection.method, detection.basis
+        ));
+        let state_since_ms = match previous.as_ref() {
+            Some(prev) if prev.state == PatternLifecycleState::Confirmed => prev.state_since_ms,
+            _ => now_ms,
+        };
+        return PatternLifecycleEntry {
+            coin: key.coin.clone(),
+            interval: key.interval,
+            pattern: key.pattern.clone(),
+            category: def.category_label.to_string(),
+            classification: def.classification,
+            signal_type: def.signal_type,
+            state: PatternLifecycleState::Confirmed,
+            confidence: detection.confidence,
+            state_since_ms,
+            last_updated_ms: now_ms,
+            window_start_ms,
+            window_end_ms,
+            notes: note,
+        };
+    }
+
+    let Some(previous) = previous else {
+        return build_entry(
+            key,
+            def,
+            PatternLifecycleState::Watching,
+            None,
+            now_ms,
+            0.0,
+            0,
+            0,
+            None,
+        );
+    };
+
+    let bars_since = bars_since(previous.state_since_ms, now_ms, interval);
+    let next_state = match previous.state {
+        PatternLifecycleState::Confirmed if bars_since >= def.max_age_bars => {
+            PatternLifecycleState::Expired
+        }
+        PatternLifecycleState::Expired if bars_since >= def.max_age_bars => {
+            PatternLifecycleState::Watching
+        }
+        PatternLifecycleState::Invalidated => PatternLifecycleState::Watching,
+        state => state,
+    };
+
+    let state_since_ms = if next_state == previous.state {
+        previous.state_since_ms
+    } else {
+        now_ms
+    };
+
+    PatternLifecycleEntry {
+        state: next_state,
+        state_since_ms,
+        last_updated_ms: now_ms,
+        ..previous
+    }
+}
+
 fn next_entry(
     key: &PatternLifecycleKey,
     def: &PatternLifecycleDefinition,
@@ -867,6 +1027,23 @@ mod tests {
             confidence: 0.62,
             window: 10,
             notes: None,
+        }
+    }
+
+    fn advanced_detection(
+        pattern: &'static str,
+        classification: PatternClassification,
+    ) -> AdvancedDetectedPattern {
+        AdvancedDetectedPattern {
+            pattern,
+            category: "williams_fractal",
+            classification,
+            signal_type: PatternSignalType::Reversal,
+            confidence: 0.73,
+            window: 5,
+            method: "five_bar",
+            basis: "pivot_window",
+            assumptions: vec!["window=5".to_string()],
         }
     }
 
@@ -1124,5 +1301,48 @@ mod tests {
             .find(|entry| entry.pattern == "Ascending Triangle")
             .expect("entry");
         assert_eq!(triangle.state, PatternLifecycleState::Confirmed);
+    }
+
+    #[test]
+    fn advanced_entries_confirm_on_detection() {
+        let mut tracker = PatternLifecycleTracker::new();
+        let candles = candle_series(0, CandleInterval::OneMinute, 10);
+        let detection = advanced_detection("Williams Fractal (Up)", PatternClassification::Bearish);
+
+        let entries = tracker.apply_advanced_detections(
+            "BTC",
+            CandleInterval::OneMinute,
+            &candles,
+            &[detection],
+        );
+
+        let fractal = entries
+            .iter()
+            .find(|entry| entry.pattern == "Williams Fractal (Up)")
+            .expect("entry");
+        assert_eq!(fractal.state, PatternLifecycleState::Confirmed);
+    }
+
+    #[test]
+    fn advanced_entries_expire_after_age() {
+        let mut tracker = PatternLifecycleTracker::new();
+        let candles = candle_series(0, CandleInterval::OneMinute, 10);
+        let detection = advanced_detection("Williams Fractal (Up)", PatternClassification::Bearish);
+        tracker.apply_advanced_detections(
+            "BTC",
+            CandleInterval::OneMinute,
+            &candles,
+            &[detection],
+        );
+
+        let later = candle_series(600_000, CandleInterval::OneMinute, 10);
+        let entries =
+            tracker.apply_advanced_detections("BTC", CandleInterval::OneMinute, &later, &[]);
+
+        let fractal = entries
+            .iter()
+            .find(|entry| entry.pattern == "Williams Fractal (Up)")
+            .expect("entry");
+        assert_eq!(fractal.state, PatternLifecycleState::Expired);
     }
 }
