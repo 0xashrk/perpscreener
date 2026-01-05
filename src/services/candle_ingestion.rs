@@ -9,6 +9,7 @@ use crate::services::candles::normalize_candles;
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
 
+#[derive(Clone)]
 pub struct CandleIngestionConfig {
     pub coins: Vec<String>,
     pub intervals: Vec<CandleInterval>,

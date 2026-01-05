@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { PatternLiveCanvas } from "../features/patterns/PatternLiveCanvas";
 
-vi.mock("../hooks/useChartStream", () => ({
-  useChartStream: () => ({
+const useChartStreamMock = vi.hoisted(() =>
+  vi.fn(() => ({
     status: "open",
     snapshot: {
       asOfMs: 1000,
@@ -23,8 +23,30 @@ vi.mock("../hooks/useChartStream", () => ({
       ]
     },
     error: ""
-  })
+  }))
+);
+
+vi.mock("../hooks/useChartStream", () => ({
+  useChartStream: (...args: [string, string, number]) => useChartStreamMock(...args)
 }));
+
+vi.mock("lightweight-charts", () => {
+  const series = {
+    setData: vi.fn(),
+    setMarkers: vi.fn()
+  };
+  const chart = {
+    addCandlestickSeries: vi.fn(() => series),
+    timeScale: () => ({ fitContent: vi.fn() }),
+    applyOptions: vi.fn(),
+    remove: vi.fn()
+  };
+  return {
+    createChart: vi.fn(() => chart),
+    ColorType: { Solid: "solid" },
+    CrosshairMode: { Normal: 0 }
+  };
+});
 
 describe("PatternLiveCanvas", () => {
   it("renders live canvas with overlay markers", () => {
@@ -47,5 +69,6 @@ describe("PatternLiveCanvas", () => {
     expect(screen.getByText(/Live Canvas/i)).toBeInTheDocument();
     expect(screen.getByText(/Overlay markers highlight/i)).toBeInTheDocument();
     expect(screen.getByText(/Double Top/i)).toBeInTheDocument();
+    expect(useChartStreamMock).toHaveBeenCalledWith("BTC", "1m", 180);
   });
 });

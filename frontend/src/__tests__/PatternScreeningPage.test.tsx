@@ -2,6 +2,24 @@ import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { PatternScreeningPage } from "../features/patterns/PatternScreeningPage";
 
+vi.mock("lightweight-charts", () => {
+  const series = {
+    setData: vi.fn(),
+    setMarkers: vi.fn()
+  };
+  const chart = {
+    addCandlestickSeries: vi.fn(() => series),
+    timeScale: () => ({ fitContent: vi.fn() }),
+    applyOptions: vi.fn(),
+    remove: vi.fn()
+  };
+  return {
+    createChart: vi.fn(() => chart),
+    ColorType: { Solid: "solid" },
+    CrosshairMode: { Normal: 0 }
+  };
+});
+
 vi.mock("../hooks/usePatternStream", () => ({
   usePatternStream: () => ({
     status: "open",

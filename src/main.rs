@@ -139,6 +139,30 @@ async fn main() {
         hyperliquid: Arc::new(HyperliquidClient::new()),
     };
 
+    // Start candle ingestion FIRST and wait for warmup before starting monitors
+    let ingestion_store = candle_store.clone();
+    let ingestion_features = feature_store.clone();
+
+    let mut ingestion = CandleIngestionService::new(
+        HyperliquidClient::new(),
+        ingestion_store,
+        ingestion_features,
+        ingestion_config.clone(),
+    );
+
+    tracing::info!("Starting candle ingestion warmup...");
+    if let Err(err) = ingestion.warmup().await {
+        tracing::error!("Candle ingestion warmup failed: {}", err);
+        return;
+    }
+    tracing::info!("Candle ingestion warmup complete.");
+
+    // Now spawn ingestion to run in background
+    tokio::spawn(async move {
+        tracing::info!("Candle ingestion active.");
+        ingestion.run().await;
+    });
+
     // Start double top monitoring in background
     let config = DoubleTopConfig::default();
     let monitor_state = pattern_state.clone();
@@ -193,27 +217,6 @@ async fn main() {
 
     tokio::spawn(async move {
         lifecycle_monitor.run().await;
-    });
-
-    let ingestion_store = candle_store.clone();
-    let ingestion_features = feature_store.clone();
-
-    tokio::spawn(async move {
-        let mut ingestion = CandleIngestionService::new(
-            HyperliquidClient::new(),
-            ingestion_store,
-            ingestion_features,
-            ingestion_config,
-        );
-
-        tracing::info!("Starting candle ingestion warmup...");
-        if let Err(err) = ingestion.warmup().await {
-            tracing::error!("Candle ingestion warmup failed: {}", err);
-            return;
-        }
-
-        tracing::info!("Candle ingestion active.");
-        ingestion.run().await;
     });
 
     // Start web server

@@ -77,6 +77,10 @@ export const startSseStream = (url: string, handlers: SseHandlers): (() => void)
     currentSource.addEventListener("snapshot", handleSnapshot);
     currentSource.addEventListener("heartbeat", handleHeartbeat);
     currentSource.addEventListener("error", handleError);
+
+    if (currentSource.readyState === EventSource.OPEN) {
+      handlers.onStatus("open");
+    }
   };
 
   connect(source);
