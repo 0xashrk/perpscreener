@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/double-top": "http://localhost:3000",
-      "/double-top/stream": "http://localhost:3000",
-      "/patterns": "http://localhost:3000",
-      "/vwap": "http://localhost:3000",
-      "/vwap/stream": "http://localhost:3000",
-      "/chart": "http://localhost:3000",
-      "/chart/stream": "http://localhost:3000",
-      "/health": "http://localhost:3000"
+      "/double-top": "http://localhost:30001",
+      "/double-top/stream": "http://localhost:30001",
+      "/patterns": "http://localhost:30001",
+      "/vwap": "http://localhost:30001",
+      "/vwap/stream": "http://localhost:30001",
+      "/chart": "http://localhost:30001",
+      "/chart/stream": "http://localhost:30001",
+      "/health": "http://localhost:30001"
     }
   },
   test: {

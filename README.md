@@ -45,7 +45,7 @@ Rust backend + React frontend for streaming perp market data and pattern signals
 - Vite + React + TypeScript.
 - Screens: Screener table (double tops + VWAP) and Pattern Screening (core + advanced lists, filters, weights, summaries).
 - Data: SSE hooks for double tops, patterns, advanced patterns, and VWAP; hash-based navigation between views.
-- Dev proxy: routes `/double-top`, `/patterns`, `/vwap`, `/chart`, `/health` to `http://localhost:3000` (see `frontend/vite.config.ts`).
+- Dev proxy: routes `/double-top`, `/patterns`, `/vwap`, `/chart`, `/health` to `http://localhost:30001` (see `frontend/vite.config.ts`).
 - Scripts (bun): `bunx vite` (dev), `bunx vite build` (build), `bunx vite preview`, `bunx vitest run` (tests), `eslint "src/**/*.{ts,tsx}"` (lint).
 
 ## Quickstart (backend)
@@ -67,9 +67,9 @@ cargo install bacon
 bacon run
 ```
 
-Server: http://localhost:3000  
-Swagger UI: http://localhost:3000/swagger-ui  
-OpenAPI JSON: http://localhost:3000/api-docs/openapi.json
+Server: http://localhost:30001
+Swagger UI: http://localhost:30001/swagger-ui
+OpenAPI JSON: http://localhost:30001/api-docs/openapi.json
 
 ## Frontend dev
 ```bash

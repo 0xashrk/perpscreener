@@ -121,6 +121,7 @@ async fn main() {
         "MON".to_string(),
         "ZEC".to_string(),
         "HYPE".to_string(),
+        "UNI".to_string(),
     ];
     let ingestion_config = CandleIngestionConfig::new(coins.clone());
     let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
@@ -249,9 +250,9 @@ async fn main() {
         .with_state(app_state)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    tracing::info!("Server running on http://localhost:3000");
-    tracing::info!("Swagger UI: http://localhost:3000/swagger-ui");
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:30001").await.unwrap();
+    tracing::info!("Server running on http://localhost:30001");
+    tracing::info!("Swagger UI: http://localhost:30001/swagger-ui");
     axum::serve(listener, app).await.unwrap();
 }
 
