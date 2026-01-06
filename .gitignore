@@ -15,3 +15,6 @@ frontend/.env.local
 
 # OpenAPI output
 openapi/
+
+# Local database
+data/

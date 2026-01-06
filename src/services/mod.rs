@@ -26,5 +26,7 @@ pub mod pattern_state;
 pub mod pattern_lifecycle_monitor;
 /// Pattern lifecycle snapshot state store.
 pub mod pattern_lifecycle_state;
+/// SQLite-backed token persistence.
+pub mod token_store;
 /// VWAP snapshot orchestration and validation.
 pub mod vwap;

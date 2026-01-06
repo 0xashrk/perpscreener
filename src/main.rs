@@ -51,6 +51,7 @@ use crate::services::pattern_lifecycle_monitor::{
 };
 use crate::services::pattern_lifecycle_state::PatternLifecycleStateInner;
 use crate::services::pattern_state::{PatternStateInner, SharedPatternState};
+use crate::services::token_store::TokenStore;
 use crate::state::AppState;
 
 #[derive(OpenApi)]
@@ -108,21 +109,32 @@ struct ApiDoc;
 #[tokio::main]
 async fn main() {
     let _log_guard = init_logging();
+
+    // Load tokens from SQLite database
+    let token_store = match TokenStore::open() {
+        Ok(store) => store,
+        Err(e) => {
+            tracing::error!("Failed to open token database: {}", e);
+            return;
+        }
+    };
+    let coins = match token_store.get_tokens() {
+        Ok(tokens) => {
+            tracing::info!("Loaded {} tokens from database: {:?}", tokens.len(), tokens);
+            tokens
+        }
+        Err(e) => {
+            tracing::error!("Failed to load tokens from database: {}", e);
+            return;
+        }
+    };
+
     // Shared state for pattern detection status
     let (broadcaster, _receiver) = tokio::sync::broadcast::channel(16);
     let pattern_state: SharedPatternState = Arc::new(PatternStateInner {
         patterns: RwLock::new(Vec::new()),
         broadcaster,
     });
-    let coins = vec![
-        "BTC".to_string(),
-        "ETH".to_string(),
-        "SOL".to_string(),
-        "MON".to_string(),
-        "ZEC".to_string(),
-        "HYPE".to_string(),
-        "UNI".to_string(),
-    ];
     let ingestion_config = CandleIngestionConfig::new(coins.clone());
     let candle_store = Arc::new(CandleStoreInner::new(ingestion_config.max_candles));
     let core_pattern_intervals = ingestion_config.intervals.clone();
