@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { buildApiUrl } from "../services/url";
 import { startSseStream } from "../services/sse";
 import { parseVwapSnapshot } from "../services/parsers";
@@ -38,8 +38,6 @@ export const useVwapStreams = (tokens: string[], timeframes: VwapTimeframe[], in
     buildDefaults(tokens, timeframes)
   );
 
-  const tokenKey = useMemo(() => tokens.join(","), [tokens]);
-  const timeframeKey = useMemo(() => timeframes.join(","), [timeframes]);
 
   useEffect(() => {
     setStatusByToken((prev) => {
@@ -67,7 +65,7 @@ export const useVwapStreams = (tokens: string[], timeframes: VwapTimeframe[], in
       });
       return next;
     });
-  }, [tokenKey, timeframeKey, tokens, timeframes]);
+  }, [tokens, timeframes]);
 
   useEffect(() => {
     const stops = tokens.map((token) => {
@@ -125,9 +123,11 @@ export const useVwapStreams = (tokens: string[], timeframes: VwapTimeframe[], in
     });
 
     return () => {
-      stops.forEach((stop) => stop());
+      stops.forEach((stop) => {
+        stop();
+      });
     };
-  }, [tokenKey, timeframeKey, interval, tokens, timeframes]);
+  }, [interval, tokens, timeframes]);
 
   return { statusByToken, vwapByToken };
 };

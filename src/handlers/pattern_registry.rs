@@ -35,6 +35,9 @@ mod tests {
     async fn registry_returns_expected_count() {
         let Json(payload) = get_pattern_registry().await;
         assert_eq!(payload.entries.len(), 105);
-        assert!(payload.entries.iter().any(|entry| entry.pattern == "Double Top"));
+        assert!(payload
+            .entries
+            .iter()
+            .any(|entry| entry.pattern == "Double Top"));
     }
 }

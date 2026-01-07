@@ -6,12 +6,12 @@ pub mod chart;
 pub mod double_top;
 /// Health check handler.
 pub mod health;
-/// Core pattern screening handlers.
-pub mod patterns;
 /// Live pattern lifecycle handlers.
 pub mod pattern_lifecycle;
 /// Pattern registry handler.
 pub mod pattern_registry;
+/// Core pattern screening handlers.
+pub mod patterns;
 /// Shared query extractors.
 pub mod query;
 /// VWAP streaming handlers.

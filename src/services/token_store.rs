@@ -8,7 +8,7 @@ use std::path::Path;
 const DEFAULT_DB_PATH: &str = "data/tokens.db";
 
 /// Default tokens to seed if the database is empty.
-const DEFAULT_TOKENS: &[&str] = &["BTC", "ETH", "SOL", "MON", "ZEC", "HYPE", "UNI"];
+const DEFAULT_TOKENS: &[&str] = &["BTC", "ETH", "SOL", "MON", "ZEC", "HYPE", "UNI", "PUMP"];
 
 /// Token store backed by SQLite.
 pub struct TokenStore {
@@ -67,7 +67,9 @@ impl TokenStore {
 
     /// Returns all tokens from the database.
     pub fn get_tokens(&self) -> SqliteResult<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT ticker FROM tokens ORDER BY ticker")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT ticker FROM tokens ORDER BY ticker")?;
         let rows = stmt.query_map([], |row| row.get(0))?;
 
         let mut tokens = Vec::new();
@@ -105,7 +107,7 @@ mod tests {
         {
             let store = TokenStore::open_at(&db_path).unwrap();
             let tokens = store.get_tokens().unwrap();
-            assert_eq!(tokens.len(), 7);
+            assert_eq!(tokens.len(), 8);
         }
 
         // Manually add a token
@@ -119,7 +121,7 @@ mod tests {
         {
             let store = TokenStore::open_at(&db_path).unwrap();
             let tokens = store.get_tokens().unwrap();
-            assert_eq!(tokens.len(), 8);
+            assert_eq!(tokens.len(), 9);
             assert!(tokens.contains(&"TEST".to_string()));
         }
     }

@@ -104,9 +104,14 @@ fn filter_entries(
         .collect()
 }
 
-fn limit_per_group(entries: Vec<PatternLifecycleEntry>, limit: usize) -> Vec<PatternLifecycleEntry> {
-    let mut grouped: HashMap<(String, crate::models::interval::CandleInterval), Vec<PatternLifecycleEntry>> =
-        HashMap::new();
+fn limit_per_group(
+    entries: Vec<PatternLifecycleEntry>,
+    limit: usize,
+) -> Vec<PatternLifecycleEntry> {
+    let mut grouped: HashMap<
+        (String, crate::models::interval::CandleInterval),
+        Vec<PatternLifecycleEntry>,
+    > = HashMap::new();
 
     for entry in entries {
         grouped
@@ -146,7 +151,9 @@ fn snapshot_event(snapshot: PatternLifecycleSnapshot) -> Option<Event> {
 mod tests {
     use super::*;
     use crate::models::interval::CandleInterval;
-    use crate::models::patterns::{PatternClassification, PatternLifecycleState, PatternSignalType};
+    use crate::models::patterns::{
+        PatternClassification, PatternLifecycleState, PatternSignalType,
+    };
 
     fn entry(coin: &str, interval: CandleInterval, last_updated_ms: u64) -> PatternLifecycleEntry {
         PatternLifecycleEntry {

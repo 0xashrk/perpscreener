@@ -54,14 +54,14 @@ export const AdvancedPatternList = ({ detections, status, error }: AdvancedPatte
           <span>Confidence</span>
         </div>
         <div className="max-h-[420px] divide-y divide-slate-100 overflow-y-auto text-sm text-slate-700">
-          {detections.map((detection, index) => {
+          {detections.map((detection) => {
             const assumptionLabel = detection.assumptions.join(", ");
             const confidenceTitle = [detection.basis, assumptionLabel]
               .filter((value) => value.length > 0)
               .join(" · ");
             return (
               <div
-                key={`${detection.coin}-${detection.interval}-${detection.pattern}-${index}`}
+                key={`${detection.coin}-${detection.interval}-${detection.pattern}-${detection.method}`}
                 className="grid grid-cols-[1.2fr_0.5fr_0.6fr_0.7fr_0.6fr] gap-2 px-4 py-3"
               >
                 <div className="flex flex-col">

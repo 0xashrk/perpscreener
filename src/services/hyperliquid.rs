@@ -101,13 +101,13 @@ impl HyperliquidClient {
             })?;
 
         match parsed {
-            serde_json::Value::Array(_) => serde_json::from_value(parsed).map_err(|source| {
-                HyperliquidError::Decode {
+            serde_json::Value::Array(_) => {
+                serde_json::from_value(parsed).map_err(|source| HyperliquidError::Decode {
                     status,
                     body,
                     source,
-                }
-            }),
+                })
+            }
             serde_json::Value::Object(_) => {
                 let envelope: CandleEnvelope =
                     serde_json::from_str(&body).map_err(|source| HyperliquidError::Decode {
@@ -120,13 +120,12 @@ impl HyperliquidClient {
                     .or(envelope.message)
                     .filter(|value| !value.is_empty())
                 {
-                    return Err(HyperliquidError::Status { status, body: message });
+                    return Err(HyperliquidError::Status {
+                        status,
+                        body: message,
+                    });
                 }
-                if let Some(candles) = envelope
-                    .candles
-                    .or(envelope.data)
-                    .or(envelope.result)
-                {
+                if let Some(candles) = envelope.candles.or(envelope.data).or(envelope.result) {
                     return Ok(candles);
                 }
                 Err(HyperliquidError::Status {

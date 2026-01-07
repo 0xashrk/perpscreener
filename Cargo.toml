@@ -20,6 +20,7 @@ validator = { version = "0.18", features = ["derive"] }
 thiserror = "1"
 anyhow = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
+futures = "0.3"
 
 [dev-dependencies]
 tempfile = "3"

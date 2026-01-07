@@ -54,7 +54,8 @@ fn detect_fibonacci(candles: &[Candle], pivots: &[Pivot]) -> Vec<AdvancedDetecte
 
         let distance = ((current.close - level) / price_ref).abs();
         if distance <= FIB_TOLERANCE_PCT {
-            let confidence = fib_confidence(distance, diff.abs(), price_ref, avg_range, trend_strength);
+            let confidence =
+                fib_confidence(distance, diff.abs(), price_ref, avg_range, trend_strength);
             results.push(advanced_pattern(
                 name,
                 PatternClassification::Neutral,
@@ -415,11 +416,7 @@ fn net_move_ratio(pivots: &[Pivot]) -> f64 {
     clamp01((last - first).abs() / sum)
 }
 
-fn fractal_confidence(
-    candles: &[Candle],
-    center_idx: usize,
-    direction: TrendDirection,
-) -> f64 {
+fn fractal_confidence(candles: &[Candle], center_idx: usize, direction: TrendDirection) -> f64 {
     if center_idx < 2 || center_idx + 2 >= candles.len() {
         return 0.6;
     }

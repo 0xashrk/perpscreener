@@ -122,12 +122,14 @@ fn is_new_confirmation(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::models::candle::Candle;
+    use crate::models::patterns::{
+        PatternClassification, PatternLifecycleEntry, PatternSignalType,
+    };
     use crate::services::candle_store::CandleStoreInner;
     use crate::services::feature_store::FeatureStoreInner;
     use crate::services::pattern_lifecycle_state::PatternLifecycleStateInner;
-    use crate::models::candle::Candle;
-    use crate::models::patterns::{PatternClassification, PatternSignalType, PatternLifecycleEntry};
+    use std::sync::Arc;
 
     fn candle(close_time: u64) -> Candle {
         Candle {

@@ -2,9 +2,9 @@ use crate::models::candle::Candle;
 use crate::models::patterns::PatternClassification;
 
 use super::candlesticks::{
-    approx_eq, avg_high_low_diff, body, body_ratio, build_pattern, candle, clamp01, lower_wick_ratio,
-    min_low, min_open, pattern_confidence, proximity_score, range, range_score, scaled_score,
-    stochastic, trend_score, upper_wick_ratio,
+    approx_eq, avg_high_low_diff, body, body_ratio, build_pattern, candle, clamp01,
+    lower_wick_ratio, min_low, min_open, pattern_confidence, proximity_score, range, range_score,
+    scaled_score, stochastic, trend_score, upper_wick_ratio,
 };
 use super::DetectedPattern;
 
@@ -62,10 +62,20 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
         ));
     }
     if let Some(confidence) = hammer(candles) {
-        results.push(build_pattern("Hammer", PatternClassification::Bullish, 1, confidence));
+        results.push(build_pattern(
+            "Hammer",
+            PatternClassification::Bullish,
+            1,
+            confidence,
+        ));
     }
     if let Some(confidence) = harami(candles) {
-        results.push(build_pattern("Harami", PatternClassification::Bullish, 2, confidence));
+        results.push(build_pattern(
+            "Harami",
+            PatternClassification::Bullish,
+            2,
+            confidence,
+        ));
     }
     if let Some(confidence) = inverted_hammer(candles) {
         results.push(build_pattern(
@@ -181,8 +191,16 @@ fn belt_hold(candles: &[Candle]) -> Option<f64> {
         let range_strength = range_score(range(c), avg_range_10);
         let wick_score = 1.0 - lower_wick_ratio(c);
         let trend_strength = trend_score(c3.close, c1.close);
-        let confidence =
-            pattern_confidence(0.55, &[open_score, body_score, range_strength, wick_score, trend_strength]);
+        let confidence = pattern_confidence(
+            0.55,
+            &[
+                open_score,
+                body_score,
+                range_strength,
+                wick_score,
+                trend_strength,
+            ],
+        );
         return Some(confidence);
     }
 
@@ -217,8 +235,10 @@ fn breakaway(candles: &[Candle]) -> Option<f64> {
         let range_strength = range_score(range(c), avg_range_10);
         let breakout_score = scaled_score(c.close - c3.high, range(c).abs());
         let trend_strength = trend_score(c4.close, c.close);
-        let confidence =
-            pattern_confidence(0.55, &[body_score, range_strength, breakout_score, trend_strength]);
+        let confidence = pattern_confidence(
+            0.55,
+            &[body_score, range_strength, breakout_score, trend_strength],
+        );
         return Some(confidence);
     }
 
@@ -252,7 +272,13 @@ fn doji_dragonfly(candles: &[Candle]) -> Option<f64> {
         let low_score = proximity_score(c.low - min_low_10, avg_range_10);
         let confidence = pattern_confidence(
             0.55,
-            &[doji_score, wick_score, stoch_score, range_strength, low_score],
+            &[
+                doji_score,
+                wick_score,
+                stoch_score,
+                range_strength,
+                low_score,
+            ],
         );
         return Some(confidence);
     }
@@ -351,7 +377,13 @@ fn hammer(candles: &[Candle]) -> Option<f64> {
         let low_score = proximity_score(c.low - min_low_5, avg_range_10);
         let confidence = pattern_confidence(
             0.55,
-            &[wick_score, body_score, stoch_score, range_strength, low_score],
+            &[
+                wick_score,
+                body_score,
+                stoch_score,
+                range_strength,
+                low_score,
+            ],
         );
         return Some(confidence);
     }
@@ -420,7 +452,13 @@ fn inverted_hammer(candles: &[Candle]) -> Option<f64> {
         let low_score = proximity_score(c.low - min_low_5, avg_range_10);
         let confidence = pattern_confidence(
             0.55,
-            &[wick_score, body_score, stoch_score, range_strength, low_score],
+            &[
+                wick_score,
+                body_score,
+                stoch_score,
+                range_strength,
+                low_score,
+            ],
         );
         return Some(confidence);
     }
@@ -448,8 +486,7 @@ fn morning_star(candles: &[Candle]) -> Option<f64> {
         let mid_small = 1.0 - body_ratio(c1);
         let last_body = body_ratio(c);
         let recovery = scaled_score(c.close - c1.open, range(c2).abs());
-        let confidence =
-            pattern_confidence(0.55, &[first_body, mid_small, last_body, recovery]);
+        let confidence = pattern_confidence(0.55, &[first_body, mid_small, last_body, recovery]);
         return Some(confidence);
     }
 

@@ -20,12 +20,12 @@ pub mod feature_store;
 pub mod hyperliquid;
 /// Background monitoring service for pattern updates.
 pub mod monitor;
-/// Shared in-memory pattern state.
-pub mod pattern_state;
 /// Pattern lifecycle monitoring loop.
 pub mod pattern_lifecycle_monitor;
 /// Pattern lifecycle snapshot state store.
 pub mod pattern_lifecycle_state;
+/// Shared in-memory pattern state.
+pub mod pattern_state;
 /// SQLite-backed token persistence.
 pub mod token_store;
 /// VWAP snapshot orchestration and validation.

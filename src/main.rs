@@ -31,8 +31,8 @@ use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList,
     PatternClassification, PatternDetection, PatternLifecycleEntry, PatternLifecycleSnapshot,
-    PatternLifecycleState, PatternQuery, PatternRegistryEntry, PatternRegistryResponse, PatternResponse,
-    PatternSignalType, PatternSummary, PatternSummarySignal,
+    PatternLifecycleState, PatternQuery, PatternRegistryEntry, PatternRegistryResponse,
+    PatternResponse, PatternSignalType, PatternSummary, PatternSummarySignal,
 };
 use crate::models::vwap::{VwapEntry, VwapSignal, VwapSnapshot, VwapStreamQuery, VwapTimeframe};
 use crate::services::advanced_pattern_monitor::{
@@ -142,6 +142,7 @@ async fn main() {
     let core_pattern_state = Arc::new(CorePatternStateInner::new());
     let advanced_pattern_state = Arc::new(AdvancedPatternStateInner::new());
     let pattern_lifecycle_state = Arc::new(PatternLifecycleStateInner::new());
+    let hyperliquid = Arc::new(HyperliquidClient::new());
     let app_state = AppState {
         pattern_state: pattern_state.clone(),
         core_pattern_state: core_pattern_state.clone(),
@@ -149,7 +150,7 @@ async fn main() {
         pattern_lifecycle_state: pattern_lifecycle_state.clone(),
         candle_store: candle_store.clone(),
         feature_store: feature_store.clone(),
-        hyperliquid: Arc::new(HyperliquidClient::new()),
+        hyperliquid: hyperliquid.clone(),
     };
 
     // Start candle ingestion FIRST and wait for warmup before starting monitors
@@ -157,7 +158,7 @@ async fn main() {
     let ingestion_features = feature_store.clone();
 
     let mut ingestion = CandleIngestionService::new(
-        HyperliquidClient::new(),
+        hyperliquid.clone(),
         ingestion_store,
         ingestion_features,
         ingestion_config.clone(),
@@ -179,9 +180,10 @@ async fn main() {
     // Start double top monitoring in background
     let config = DoubleTopConfig::default();
     let monitor_state = pattern_state.clone();
+    let monitor_hyperliquid = hyperliquid.clone();
 
     tokio::spawn(async move {
-        let mut monitor = MonitorService::new(coins, config, monitor_state);
+        let mut monitor = MonitorService::new(monitor_hyperliquid, coins, config, monitor_state);
 
         tracing::info!("Starting double top detection warmup...");
         if let Err(e) = monitor.warmup().await {
@@ -262,7 +264,9 @@ async fn main() {
         .with_state(app_state)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:30001").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:30001")
+        .await
+        .unwrap();
     tracing::info!("Server running on http://localhost:30001");
     tracing::info!("Swagger UI: http://localhost:30001/swagger-ui");
     axum::serve(listener, app).await.unwrap();

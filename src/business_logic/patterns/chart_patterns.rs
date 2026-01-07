@@ -71,9 +71,8 @@ fn detect_triangles(
             strength,
         ));
     } else if support_flat && resistance_slope < 0.0 {
-        let strength =
-            0.6 * flatness_score(support_slope, price_ref)
-                + 0.4 * slope_strength(resistance_slope, price_ref);
+        let strength = 0.6 * flatness_score(support_slope, price_ref)
+            + 0.4 * slope_strength(resistance_slope, price_ref);
         results.push(chart_pattern(
             "Descending Triangle",
             PatternClassification::Bearish,
@@ -120,8 +119,8 @@ fn detect_channels(
     }
 
     let avg_slope = (support_slope + resistance_slope) / 2.0;
-    let tightness =
-        1.0 - (slope_delta / (price_ref.abs() * CHANNEL_SLOPE_TOLERANCE).max(f64::EPSILON))
+    let tightness = 1.0
+        - (slope_delta / (price_ref.abs() * CHANNEL_SLOPE_TOLERANCE).max(f64::EPSILON))
             .clamp(0.0, 1.0);
     if is_flat(avg_slope, price_ref) {
         results.push(chart_pattern(
@@ -375,8 +374,7 @@ fn detect_flags_pennants(
     if flag_range_pct > FLAG_RANGE_THRESHOLD {
         return results;
     }
-    let trend_strength =
-        (trend_pct.abs() / (FLAG_TREND_THRESHOLD * 2.0)).clamp(0.0, 1.0);
+    let trend_strength = (trend_pct.abs() / (FLAG_TREND_THRESHOLD * 2.0)).clamp(0.0, 1.0);
     let flag_tightness = 1.0 - (flag_range_pct / FLAG_RANGE_THRESHOLD).clamp(0.0, 1.0);
     let strength = 0.6 * trend_strength + 0.4 * flag_tightness;
 

@@ -3,8 +3,8 @@ use crate::models::patterns::PatternClassification;
 
 use super::candlesticks::{
     approx_eq, avg_high_low_diff, body, body_ratio, build_pattern, candle, clamp01,
-    lower_wick_ratio, max_high, max_open, pattern_confidence, proximity_score, range,
-    range_score, scaled_score, trend_score, upper_wick_ratio,
+    lower_wick_ratio, max_high, max_open, pattern_confidence, proximity_score, range, range_score,
+    scaled_score, trend_score, upper_wick_ratio,
 };
 use super::DetectedPattern;
 
@@ -76,7 +76,12 @@ pub(super) fn detect(candles: &[Candle]) -> Vec<DetectedPattern> {
         ));
     }
     if let Some(confidence) = harami(candles) {
-        results.push(build_pattern("Harami", PatternClassification::Bearish, 2, confidence));
+        results.push(build_pattern(
+            "Harami",
+            PatternClassification::Bearish,
+            2,
+            confidence,
+        ));
     }
     if let Some(confidence) = shooting_star(candles) {
         results.push(build_pattern(
@@ -168,8 +173,16 @@ fn belt_hold(candles: &[Candle]) -> Option<f64> {
         let range_strength = range_score(range(c), avg_range_10);
         let wick_score = 1.0 - upper_wick_ratio(c);
         let trend_strength = trend_score(c3.close, c1.close);
-        let confidence =
-            pattern_confidence(0.55, &[open_score, body_score, range_strength, wick_score, trend_strength]);
+        let confidence = pattern_confidence(
+            0.55,
+            &[
+                open_score,
+                body_score,
+                range_strength,
+                wick_score,
+                trend_strength,
+            ],
+        );
         return Some(confidence);
     }
 
@@ -412,10 +425,8 @@ fn shooting_star(candles: &[Candle]) -> Option<f64> {
         let body_score = centered_score(body_ratio(c), 0.15, 0.15);
         let range_strength = range_score(range(c), avg_range_10);
         let high_score = proximity_score(c.high - max_high_5, avg_range_10);
-        let confidence = pattern_confidence(
-            0.55,
-            &[wick_score, body_score, range_strength, high_score],
-        );
+        let confidence =
+            pattern_confidence(0.55, &[wick_score, body_score, range_strength, high_score]);
         return Some(confidence);
     }
 

@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
+use crate::business_logic::features::{FeatureSnapshot, Trendline, TrendlineKind};
 use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
 use crate::models::patterns::{
     PatternClassification, PatternLifecycleEntry, PatternLifecycleState, PatternSignalType,
 };
-use crate::business_logic::features::{FeatureSnapshot, Trendline, TrendlineKind};
 
 use super::advanced::detect_advanced_patterns;
 use super::candlesticks::detect_candlestick_patterns;
-use super::gaps::detect_gap_patterns;
 use super::chart_patterns::detect_chart_patterns;
+use super::gaps::detect_gap_patterns;
 use super::lifecycle_registry::{
     pattern_registry, PatternLifecycleCategory, PatternLifecycleDefinition,
 };
@@ -134,15 +134,7 @@ impl PatternLifecycleTracker {
                 .get(&(def.detector_name, def.classification))
                 .copied();
             let entry = self.entries.get(&key).cloned();
-            let next = next_entry(
-                &key,
-                def,
-                interval,
-                now_ms,
-                candles,
-                entry,
-                detection,
-            );
+            let next = next_entry(&key, def, interval, now_ms, candles, entry, detection);
             self.entries.insert(key, next.clone());
             updated.push(next);
         }
@@ -171,8 +163,9 @@ impl PatternLifecycleTracker {
                 classification: def.classification,
             };
 
-            let detection = active_detection
-                .filter(|det| det.pattern == def.detector_name && det.classification == def.classification);
+            let detection = active_detection.filter(|det| {
+                det.pattern == def.detector_name && det.classification == def.classification
+            });
             let entry = self.entries.get(&key).cloned();
             let context = self.gap_context.get(&key).cloned();
 
@@ -273,15 +266,7 @@ impl PatternLifecycleTracker {
                 .copied();
             let entry = self.entries.get(&key).cloned();
 
-            let next = next_advanced_entry(
-                &key,
-                def,
-                interval,
-                now_ms,
-                candles,
-                entry,
-                detection,
-            );
+            let next = next_advanced_entry(&key, def, interval, now_ms, candles, entry, detection);
 
             self.entries.insert(key, next.clone());
             updated.push(next);
@@ -855,9 +840,7 @@ fn next_entry(
 
     let bars_since = bars_since(previous.state_since_ms, now_ms, interval);
     let next_state = match previous.state {
-        PatternLifecycleState::Confirmed
-            if bars_since >= def.max_age_bars =>
-        {
+        PatternLifecycleState::Confirmed if bars_since >= def.max_age_bars => {
             PatternLifecycleState::Expired
         }
         PatternLifecycleState::Expired if bars_since >= def.max_age_bars => {
@@ -1023,7 +1006,10 @@ mod tests {
         }
     }
 
-    fn chart_detection(pattern: &'static str, classification: PatternClassification) -> DetectedPattern {
+    fn chart_detection(
+        pattern: &'static str,
+        classification: PatternClassification,
+    ) -> DetectedPattern {
         DetectedPattern {
             pattern,
             category: "chart_continuation",
@@ -1084,10 +1070,7 @@ mod tests {
         }
     }
 
-    fn common_gap_up_series(
-        start_ms: u64,
-        interval: CandleInterval,
-    ) -> (Vec<Candle>, f64) {
+    fn common_gap_up_series(start_ms: u64, interval: CandleInterval) -> (Vec<Candle>, f64) {
         let mut candles = candle_series(start_ms, interval, 20);
         for candle in &mut candles {
             candle.open = 95.0;
@@ -1113,16 +1096,15 @@ mod tests {
     fn candlestick_entries_start_warming() {
         let mut tracker = PatternLifecycleTracker::new();
         let candles = candle_series(0, CandleInterval::OneMinute, 1);
-        let entries = tracker.apply_candlestick_detections(
-            "BTC",
-            CandleInterval::OneMinute,
-            &candles,
-            &[],
-        );
+        let entries =
+            tracker.apply_candlestick_detections("BTC", CandleInterval::OneMinute, &candles, &[]);
 
         let abandoned = entries
             .iter()
-            .find(|entry| entry.pattern == "Abandoned Baby" && entry.classification == PatternClassification::Bullish)
+            .find(|entry| {
+                entry.pattern == "Abandoned Baby"
+                    && entry.classification == PatternClassification::Bullish
+            })
             .expect("entry");
         assert_eq!(abandoned.state, PatternLifecycleState::Warming);
     }
@@ -1142,7 +1124,10 @@ mod tests {
 
         let hammer = entries
             .iter()
-            .find(|entry| entry.pattern == "Hammer / Dragonfly Doji" && entry.classification == PatternClassification::Bullish)
+            .find(|entry| {
+                entry.pattern == "Hammer / Dragonfly Doji"
+                    && entry.classification == PatternClassification::Bullish
+            })
             .expect("entry");
         assert_eq!(hammer.state, PatternLifecycleState::Confirmed);
         assert!((hammer.confidence - 0.7).abs() < f64::EPSILON);
@@ -1170,7 +1155,10 @@ mod tests {
 
         let hammer = entries
             .iter()
-            .find(|entry| entry.pattern == "Hammer / Dragonfly Doji" && entry.classification == PatternClassification::Bullish)
+            .find(|entry| {
+                entry.pattern == "Hammer / Dragonfly Doji"
+                    && entry.classification == PatternClassification::Bullish
+            })
             .expect("entry");
         assert_eq!(hammer.state, PatternLifecycleState::Expired);
     }
@@ -1333,12 +1321,7 @@ mod tests {
         let mut tracker = PatternLifecycleTracker::new();
         let candles = candle_series(0, CandleInterval::OneMinute, 10);
         let detection = advanced_detection("Williams Fractal (Up)", PatternClassification::Bearish);
-        tracker.apply_advanced_detections(
-            "BTC",
-            CandleInterval::OneMinute,
-            &candles,
-            &[detection],
-        );
+        tracker.apply_advanced_detections("BTC", CandleInterval::OneMinute, &candles, &[detection]);
 
         let later = candle_series(600_000, CandleInterval::OneMinute, 10);
         let entries =

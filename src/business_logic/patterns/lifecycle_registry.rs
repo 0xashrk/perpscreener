@@ -247,11 +247,7 @@ const CANDLESTICK_BEARISH: &[&str] = &[
     "Upside Gap Two Crows",
 ];
 
-const GAP_PATTERNS: &[(
-    &str,
-    PatternClassification,
-    PatternSignalType,
-)] = &[
+const GAP_PATTERNS: &[(&str, PatternClassification, PatternSignalType)] = &[
     (
         "Breakaway Gap (Up)",
         PatternClassification::Bullish,
@@ -289,13 +285,7 @@ const GAP_PATTERNS: &[(
     ),
 ];
 
-const CHART_PATTERNS: &[(
-    &str,
-    PatternClassification,
-    PatternSignalType,
-    &str,
-    usize,
-)] = &[
+const CHART_PATTERNS: &[(&str, PatternClassification, PatternSignalType, &str, usize)] = &[
     (
         "Ascending Triangle",
         PatternClassification::Bullish,
@@ -431,13 +421,7 @@ const CHART_PATTERNS: &[(
     ),
 ];
 
-const ADVANCED_PATTERNS: &[(
-    &str,
-    PatternClassification,
-    PatternSignalType,
-    &str,
-    usize,
-)] = &[
+const ADVANCED_PATTERNS: &[(&str, PatternClassification, PatternSignalType, &str, usize)] = &[
     (
         "Fibonacci 38.2% Retracement",
         PatternClassification::Neutral,

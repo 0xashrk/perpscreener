@@ -1,16 +1,19 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use tokio::time::{interval, Duration};
+
 use crate::business_logic::config::DoubleTopConfig;
 use crate::business_logic::double_top::{Alert, DoubleTopDetector, PatternState};
 use crate::models::double_top::{CoinPatternStatus, PatternSnapshot};
 use crate::services::hyperliquid::HyperliquidClient;
 use crate::services::pattern_state::SharedPatternState;
-use std::collections::HashMap;
-use tokio::time::{interval, Duration};
 
 const INTERVAL_MS: u64 = 60_000; // 1 minute
 
 /// Monitoring service that runs double top detection for multiple coins
 pub struct MonitorService {
-    client: HyperliquidClient,
+    client: Arc<HyperliquidClient>,
     detectors: HashMap<String, DoubleTopDetector>,
     config: DoubleTopConfig,
     last_candle_time: HashMap<String, u64>,
@@ -20,6 +23,7 @@ pub struct MonitorService {
 impl MonitorService {
     /// Create a monitor service for the provided coins and config.
     pub fn new(
+        client: Arc<HyperliquidClient>,
         coins: Vec<String>,
         config: DoubleTopConfig,
         shared_state: SharedPatternState,
@@ -30,7 +34,7 @@ impl MonitorService {
         }
 
         Self {
-            client: HyperliquidClient::new(),
+            client,
             detectors,
             config,
             last_candle_time: HashMap::new(),

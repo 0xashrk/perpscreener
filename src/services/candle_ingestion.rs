@@ -1,6 +1,10 @@
+use std::cmp;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
+use futures::stream::{self, StreamExt};
+use tokio::sync::RwLock;
 use tokio::time::{interval, sleep};
 
 use crate::models::interval::CandleInterval;
@@ -8,6 +12,8 @@ use crate::services::candle_store::{CandleKey, SharedCandleStore};
 use crate::services::candles::normalize_candles;
 use crate::services::feature_store::SharedFeatureStore;
 use crate::services::hyperliquid::HyperliquidClient;
+
+const CONCURRENT_REQUESTS: usize = 8;
 
 #[derive(Clone)]
 pub struct CandleIngestionConfig {
@@ -48,16 +54,16 @@ impl CandleIngestionConfig {
 }
 
 pub struct CandleIngestionService {
-    client: HyperliquidClient,
+    client: Arc<HyperliquidClient>,
     store: SharedCandleStore,
     feature_store: SharedFeatureStore,
     config: CandleIngestionConfig,
-    last_close_time: HashMap<CandleKey, u64>,
+    last_close_time: RwLock<HashMap<CandleKey, u64>>,
 }
 
 impl CandleIngestionService {
     pub fn new(
-        client: HyperliquidClient,
+        client: Arc<HyperliquidClient>,
         store: SharedCandleStore,
         feature_store: SharedFeatureStore,
         config: CandleIngestionConfig,
@@ -67,51 +73,84 @@ impl CandleIngestionService {
             store,
             feature_store,
             config,
-            last_close_time: HashMap::new(),
+            last_close_time: RwLock::new(HashMap::new()),
         }
     }
 
-    pub async fn warmup(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let coins = self.config.coins.clone();
-        let intervals = self.config.intervals.clone();
-        for coin in &coins {
-            for interval in &intervals {
-                self.warmup_key(coin, *interval).await?;
-                if !self.config.request_delay.is_zero() {
-                    sleep(self.config.request_delay).await;
+    pub async fn warmup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let request_delay = self.config.request_delay;
+        let tasks = self.config.coins.iter().cloned().flat_map(|coin| {
+            self.config
+                .intervals
+                .iter()
+                .copied()
+                .map(move |interval| (coin.clone(), interval))
+        });
+
+        let results = stream::iter(tasks)
+            .map(|(coin, interval)| {
+                let delay = request_delay;
+                async move {
+                    let result = self.warmup_key(&coin, interval).await;
+                    if !delay.is_zero() {
+                        sleep(delay).await;
+                    }
+                    result.map_err(|err| (coin, interval, err))
                 }
+            })
+            .buffer_unordered(CONCURRENT_REQUESTS)
+            .collect::<Vec<_>>()
+            .await;
+
+        for result in results {
+            if let Err((coin, interval, err)) = result {
+                tracing::error!("Candle warmup failed for {} {}: {}", coin, interval, err);
+                return Err(err);
             }
         }
+
         Ok(())
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&self) {
         let mut ticker = interval(self.config.poll_interval);
-        let coins = self.config.coins.clone();
-        let intervals = self.config.intervals.clone();
 
         loop {
             ticker.tick().await;
-            for coin in &coins {
-                for candle_interval in &intervals {
-                    if let Err(err) = self.refresh_key(coin, *candle_interval).await {
-                        tracing::error!(
-                            "Candle refresh failed for {} {}: {}",
-                            coin,
-                            candle_interval,
-                            err
-                        );
-                    }
-                    if !self.config.request_delay.is_zero() {
-                        sleep(self.config.request_delay).await;
-                    }
-                }
-            }
+
+            let request_delay = self.config.request_delay;
+            let tasks = self.config.coins.iter().cloned().flat_map(|coin| {
+                self.config
+                    .intervals
+                    .iter()
+                    .copied()
+                    .map(move |interval| (coin.clone(), interval))
+            });
+
+            stream::iter(tasks)
+                .for_each_concurrent(
+                    Some(cmp::max(1, CONCURRENT_REQUESTS)),
+                    |(coin, interval)| async move {
+                        if let Err(err) = self.refresh_key(&coin, interval).await {
+                            tracing::error!(
+                                "Candle refresh failed for {} {}: {}",
+                                coin,
+                                interval,
+                                err
+                            );
+                        }
+
+                        if !request_delay.is_zero() {
+                            sleep(request_delay).await;
+                        }
+                    },
+                )
+                .await;
         }
     }
 
     async fn warmup_key(
-        &mut self,
+        &self,
         coin: &str,
         interval: CandleInterval,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -128,23 +167,26 @@ impl CandleIngestionService {
         let key = CandleKey::new(coin.to_string(), interval);
         let summary = self.store.upsert(key.clone(), candles).await;
         self.update_features(&key).await;
-        self.update_last_close_time(key, summary.newest_close_time);
+        self.update_last_close_time(key, summary.newest_close_time)
+            .await;
 
         Ok(())
     }
 
     async fn refresh_key(
-        &mut self,
+        &self,
         coin: &str,
         interval: CandleInterval,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let now = chrono::Utc::now().timestamp_millis() as u64;
         let key = CandleKey::new(coin.to_string(), interval);
-        let start_time = self
-            .last_close_time
-            .get(&key)
-            .copied()
-            .unwrap_or(now.saturating_sub(interval.ms() * 2));
+        let start_time = {
+            let guard = self.last_close_time.read().await;
+            guard
+                .get(&key)
+                .copied()
+                .unwrap_or(now.saturating_sub(interval.ms() * 2))
+        };
 
         let mut candles = self
             .client
@@ -158,7 +200,8 @@ impl CandleIngestionService {
 
         let summary = self.store.upsert(key.clone(), candles).await;
         self.update_features(&key).await;
-        self.update_last_close_time(key, summary.newest_close_time);
+        self.update_last_close_time(key, summary.newest_close_time)
+            .await;
 
         Ok(())
     }
@@ -169,9 +212,10 @@ impl CandleIngestionService {
         }
     }
 
-    fn update_last_close_time(&mut self, key: CandleKey, newest: Option<u64>) {
+    async fn update_last_close_time(&self, key: CandleKey, newest: Option<u64>) {
         if let Some(close_time) = newest {
-            self.last_close_time.insert(key, close_time);
+            let mut guard = self.last_close_time.write().await;
+            guard.insert(key, close_time);
         }
     }
 }
