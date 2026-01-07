@@ -18,3 +18,6 @@ openapi/
 
 # Local database
 data/
+
+# Trading recipes (private)
+recipe/
