@@ -6,6 +6,8 @@ pub mod chart;
 pub mod double_top;
 /// Health check handler.
 pub mod health;
+/// L2 order book handlers.
+pub mod orderbook;
 /// Live pattern lifecycle handlers.
 pub mod pattern_lifecycle;
 /// Pattern registry handler.

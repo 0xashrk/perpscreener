@@ -19,6 +19,7 @@ use crate::handlers::advanced_patterns::{get_advanced_patterns, get_advanced_pat
 use crate::handlers::chart::{get_chart_snapshot, get_chart_stream};
 use crate::handlers::double_top::{get_double_top_status, get_double_top_stream};
 use crate::handlers::health::health;
+use crate::handlers::orderbook::get_orderbook;
 use crate::handlers::pattern_lifecycle::{get_pattern_lifecycle, get_pattern_lifecycle_stream};
 use crate::handlers::pattern_registry::get_pattern_registry;
 use crate::handlers::patterns::{get_patterns, get_patterns_stream};
@@ -28,6 +29,7 @@ use crate::models::chart::{ChartSnapshot, ChartStreamQuery};
 use crate::models::double_top::{CoinPatternStatus, DoubleTopResponse};
 use crate::models::health::HealthResponse;
 use crate::models::interval::CandleInterval;
+use crate::models::orderbook::{L2BookLevel, L2BookQuery, L2BookSnapshot};
 use crate::models::patterns::{
     AdvancedPatternDetection, AdvancedPatternResponse, CoinList, IntervalList,
     PatternClassification, PatternDetection, PatternLifecycleEntry, PatternLifecycleSnapshot,
@@ -70,7 +72,8 @@ use crate::state::AppState;
         handlers::chart::get_chart_stream,
         handlers::chart::get_chart_snapshot,
         handlers::vwap::get_vwap_stream,
-        handlers::vwap::get_vwap_snapshot
+        handlers::vwap::get_vwap_snapshot,
+        handlers::orderbook::get_orderbook
     ),
     components(schemas(
         HealthResponse,
@@ -101,6 +104,9 @@ use crate::state::AppState;
         PatternSignalType,
         CoinList,
         IntervalList,
+        L2BookSnapshot,
+        L2BookLevel,
+        L2BookQuery,
         errors::ErrorResponse
     ))
 )]
@@ -256,6 +262,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health))
+        .route("/orderbook", get(get_orderbook))
         .nest("/double-top", double_top_routes)
         .nest("/patterns", pattern_routes)
         .nest("/patterns/advanced", advanced_pattern_routes)

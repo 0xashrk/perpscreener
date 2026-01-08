@@ -8,6 +8,8 @@ pub mod double_top;
 pub mod health;
 /// Interval helpers for HL candles.
 pub mod interval;
+/// L2 order book request/response models.
+pub mod orderbook;
 /// Pattern screening request/response models.
 pub mod patterns;
 /// VWAP request/response models.
