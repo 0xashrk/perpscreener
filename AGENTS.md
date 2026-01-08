@@ -10,6 +10,7 @@ Guidelines:
 - Backend: `guidelines/backend_guidelines.md`
 - Frontend: `guidelines/frontend_guidelines.md`
 - OpenAPI: `guidelines/openapi_guidelines.md`
+- Scripts: `guidelines/scripts_guidelines.md`
 
 ## Language Guidance
 
@@ -45,6 +46,8 @@ src/
   models/          # request/response DTOs and schema helpers
   errors/          # AppError and error payloads
 frontend/          # React + TypeScript frontend (separate app)
+script/            # standalone Rust CLI tools
+  backtest/        # backtest tool for trading recipes
 ```
 
 Folder docs:
@@ -68,3 +71,7 @@ Folder docs:
 ## OpenAPI Snapshot
 
 After adding or modifying backend endpoints, update the OpenAPI JSON files. See `guidelines/openapi_guidelines.md`.
+
+## Scripts
+
+Standalone CLI tools live in `script/`. See `guidelines/scripts_guidelines.md`.

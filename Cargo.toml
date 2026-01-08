@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "script/backtest"]
+
 [package]
 name = "perpscreener"
 version = "0.1.0"
