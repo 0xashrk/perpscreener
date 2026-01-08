@@ -9,6 +9,7 @@ No file should exceed 600 lines of code.
 Guidelines:
 - Backend: `guidelines/backend_guidelines.md`
 - Frontend: `guidelines/frontend_guidelines.md`
+- OpenAPI: `guidelines/openapi_guidelines.md`
 
 Frontend code lives in this repo under `frontend/`.
 
@@ -48,3 +49,7 @@ Folder docs:
 ## Development
 
 - Prefer `bacon run` for auto rebuild/restart during dev; refresh Swagger UI after restarts to pick up OpenAPI changes.
+
+## OpenAPI Snapshot
+
+After adding or modifying backend endpoints, update the OpenAPI JSON files. See `guidelines/openapi_guidelines.md`.

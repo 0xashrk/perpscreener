@@ -29,6 +29,7 @@ pub struct L2BookSnapshot {
 pub struct L2BookQuery {
     /// Coin symbol (e.g., "BTC", "ETH").
     #[validate(length(min = 1, max = 20))]
+    #[param(example = "BTC")]
     pub coin: String,
     /// Optional significant figures for price aggregation (2-5, or null for full precision).
     #[serde(rename = "nSigFigs")]
