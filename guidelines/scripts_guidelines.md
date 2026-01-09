@@ -7,6 +7,7 @@ Standalone Rust CLI tools in `script/`. Each subfolder is a workspace member.
 | Script | Path | Description |
 |--------|------|-------------|
 | backtest | `script/backtest/` | Backtest trading recipes against historical data |
+| signal | `script/signal/` | Evaluate HL_ALPHA signals against live backend data |
 
 ## Usage
 
@@ -14,8 +15,9 @@ Standalone Rust CLI tools in `script/`. Each subfolder is a workspace member.
 # Run a script from repo root
 cargo run -p <name> -- [args]
 
-# Example
+# Examples
 cargo run -p backtest -- --coin BTC --hours 12
+cargo run -p signal -- --coin BTC
 ```
 
 ## Adding a New Script

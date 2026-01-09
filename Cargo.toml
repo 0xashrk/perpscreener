@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "script/backtest"]
+members = [".", "script/backtest", "script/signal"]
 
 [package]
 name = "perpscreener"
