@@ -159,27 +159,19 @@ async fn main() {
         hyperliquid: hyperliquid.clone(),
     };
 
-    // Start candle ingestion FIRST and wait for warmup before starting monitors
+    // Start candle ingestion in background (no warmup - fetch on demand)
     let ingestion_store = candle_store.clone();
     let ingestion_features = feature_store.clone();
 
-    let mut ingestion = CandleIngestionService::new(
+    let ingestion = CandleIngestionService::new(
         hyperliquid.clone(),
         ingestion_store,
         ingestion_features,
         ingestion_config.clone(),
     );
 
-    tracing::info!("Starting candle ingestion warmup...");
-    if let Err(err) = ingestion.warmup().await {
-        tracing::error!("Candle ingestion warmup failed: {}", err);
-        return;
-    }
-    tracing::info!("Candle ingestion warmup complete.");
-
-    // Now spawn ingestion to run in background
     tokio::spawn(async move {
-        tracing::info!("Candle ingestion active.");
+        tracing::info!("Candle ingestion active (no warmup).");
         ingestion.run().await;
     });
 
@@ -190,14 +182,7 @@ async fn main() {
 
     tokio::spawn(async move {
         let mut monitor = MonitorService::new(monitor_hyperliquid, coins, config, monitor_state);
-
-        tracing::info!("Starting double top detection warmup...");
-        if let Err(e) = monitor.warmup().await {
-            tracing::error!("Warmup failed: {}", e);
-            return;
-        }
-
-        tracing::info!("Double top detection active, monitoring every 60s");
+        tracing::info!("Double top detection active (no warmup), monitoring every 60s");
         monitor.run().await;
     });
 
