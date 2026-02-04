@@ -80,6 +80,27 @@ bunx vite build                                     # build
 bunx vitest run                                     # tests
 ```
 
+## OpenAPI snapshots
+
+After adding or modifying backend endpoints, regenerate the OpenAPI JSON files. Requires the backend to be running.
+
+```bash
+# Install (one-time)
+cargo install openapi-snapshot
+
+# Generate snapshots (server must be running on port 30001)
+openapi-snapshot --url http://localhost:30001/api-docs/openapi.json \
+  --out openapi/backend_openapi.json \
+  --outline-out openapi/backend_openapi.outline.json
+```
+
+Watch mode for continuous updates during development:
+```bash
+openapi-snapshot watch --url http://localhost:30001/api-docs/openapi.json \
+  --out openapi/backend_openapi.json \
+  --outline-out openapi/backend_openapi.outline.json
+```
+
 ## Tests & lint
 - Backend: `cargo test`
 - Frontend: `cd frontend && bunx vitest run` (watch: `bunx vitest`)
