@@ -69,7 +69,7 @@ All data fetched from backend endpoints:
 | window_high |  |
 | window_low |  |
 | range_pct |  |
-| data_quality | OK / gaps / alignment warning |
+| data_quality | OK / gaps / alignment warning / missing candles |
 
 ## Error Handling
 

@@ -1,0 +1,35 @@
+name: Update Momentum Data
+
+on:
+  schedule:
+    # Run every minute (GitHub schedules are best-effort; may batch to ~5 min)
+    - cron: "* * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-momentum:
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_URL: ${{ secrets.MOMENTUM_BACKEND_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch momentum data
+        run: |
+          backend="${BACKEND_URL:-http://localhost:30001}"
+          cargo run -p momentum -- --coin BTC --limit 120 --backend "$backend"
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add script/momentum/momentum.txt
+          git diff --staged --quiet || git commit -m "chore: update momentum data [$(date -u '+%Y-%m-%d %H:%M') UTC]"
+          git push

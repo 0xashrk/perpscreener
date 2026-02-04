@@ -246,12 +246,22 @@ fn format_pct(v: f64) -> String {
     format!("{:.4}%", v * 100.0)
 }
 
-fn build_data_quality(alignment_ok: bool, has_gaps: bool) -> String {
-    match (alignment_ok, has_gaps) {
-        (true, false) => "OK".to_string(),
-        (false, false) => "alignment warning".to_string(),
-        (true, true) => "gaps".to_string(),
-        (false, true) => "gaps; alignment warning".to_string(),
+fn build_data_quality(alignment_ok: bool, has_gaps: bool, missing_candles: bool) -> String {
+    let mut issues = Vec::new();
+    if !alignment_ok {
+        issues.push("alignment warning");
+    }
+    if has_gaps {
+        issues.push("gaps");
+    }
+    if missing_candles {
+        issues.push("missing candles");
+    }
+
+    if issues.is_empty() {
+        "OK".to_string()
+    } else {
+        issues.join("; ")
     }
 }
 
@@ -274,9 +284,13 @@ async fn main() -> Result<()> {
         .filter(|c| c.open_time >= start_ms && c.open_time <= now_ms)
         .collect();
 
-    if window.len() < 2 {
+    let elapsed_minutes = ((now_ms - start_ms) / 60_000) as usize;
+    let expected_candles = elapsed_minutes + 1; // inclusive of the starting minute
+
+    if window.len() < expected_candles {
         return Err(anyhow!(
-            "insufficient candles to cover current hour: got {}",
+            "insufficient candles in current hour: expected at least {}, got {}",
+            expected_candles,
             window.len()
         ));
     }
@@ -325,7 +339,8 @@ async fn main() -> Result<()> {
     let window_low = window.iter().map(|c| c.low).fold(f64::MAX, f64::min);
     let range_pct = (window_high - window_low) / price_to_beat;
 
-    let data_quality = build_data_quality(alignment_ok, has_gaps);
+    let missing_candles = window.len() < expected_candles;
+    let data_quality = build_data_quality(alignment_ok, has_gaps, missing_candles);
 
     // Agreement signal per recipe
     let agreement = match (direction_vs_open, trend_regime, trend_5m) {
