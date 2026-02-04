@@ -12,8 +12,6 @@ permissions:
 jobs:
   update-momentum:
     runs-on: ubuntu-latest
-    env:
-      BACKEND_URL: ${{ secrets.MOMENTUM_BACKEND_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,10 +19,9 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Fetch momentum data
+      - name: Fetch momentum data (direct Hyperliquid)
         run: |
-          backend="${BACKEND_URL:-http://localhost:30001}"
-          cargo run -p momentum -- --coin BTC --limit 120 --backend "$backend"
+          cargo run -p momentum -- --coin BTC --limit 120 --use-hl
 
       - name: Commit and push if changed
         run: |

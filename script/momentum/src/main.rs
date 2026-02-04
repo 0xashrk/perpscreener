@@ -8,6 +8,8 @@ use chrono::{DateTime, Timelike, Utc};
 use clap::Parser;
 use reqwest::Client;
 use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
 
 #[derive(Parser, Debug)]
 #[command(name = "momentum", about = "BTC intrahour momentum context (recipe)")]
@@ -19,6 +21,10 @@ struct Args {
     /// Backend base URL
     #[arg(long, default_value = "http://localhost:30001")]
     backend: String,
+
+    /// Fetch directly from Hyperliquid instead of backend
+    #[arg(long, default_value_t = false)]
+    use_hl: bool,
 
     /// Number of 1m candles to pull (must cover current hour)
     #[arg(long, default_value_t = 180)]
@@ -34,14 +40,66 @@ struct ChartSnapshot {
 struct Candle {
     #[serde(rename = "t")]
     open_time: u64,
-    #[serde(rename = "o")]
+    #[serde(rename = "o", deserialize_with = "deserialize_string_to_f64")]
     open: f64,
-    #[serde(rename = "h")]
+    #[serde(rename = "h", deserialize_with = "deserialize_string_to_f64")]
     high: f64,
-    #[serde(rename = "l")]
+    #[serde(rename = "l", deserialize_with = "deserialize_string_to_f64")]
     low: f64,
-    #[serde(rename = "c")]
+    #[serde(rename = "c", deserialize_with = "deserialize_string_to_f64")]
     close: f64,
+}
+
+fn deserialize_string_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct StringOrNumber;
+
+    impl<'de> serde::de::Visitor<'de> for StringOrNumber {
+        type Value = f64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string or number")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<f64, E>
+        where
+            E: serde::de::Error,
+        {
+            value.parse::<f64>().map_err(E::custom)
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<f64, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(&value)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<f64, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value)
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<f64, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f64)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<f64, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f64)
+        }
+    }
+
+    deserializer.deserialize_any(StringOrNumber)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,6 +156,76 @@ impl BackendClient {
 
         Ok(snapshot.candles)
     }
+}
+
+const HYPERLIQUID_API_URL: &str = "https://api.hyperliquid.xyz/info";
+
+#[derive(Debug, Serialize)]
+struct HlCandleRequest {
+    #[serde(rename = "type")]
+    request_type: String,
+    req: HlCandleRequestInner,
+}
+
+#[derive(Debug, Serialize)]
+struct HlCandleRequestInner {
+    coin: String,
+    interval: String,
+    #[serde(rename = "startTime")]
+    start_time: u64,
+    #[serde(rename = "endTime")]
+    end_time: u64,
+}
+
+async fn fetch_hl_candles(client: &Client, coin: &str, start_time: u64, end_time: u64) -> Result<Vec<Candle>> {
+    let request = HlCandleRequest {
+        request_type: "candleSnapshot".to_string(),
+        req: HlCandleRequestInner {
+            coin: coin.to_string(),
+            interval: "1m".to_string(),
+            start_time,
+            end_time,
+        },
+    };
+
+    let resp = client
+        .post(HYPERLIQUID_API_URL)
+        .json(&request)
+        .send()
+        .await
+        .context("failed to send hyperliquid request")?;
+    let status = resp.status();
+    let body = resp.text().await.context("failed to read hyperliquid body")?;
+    if !status.is_success() {
+        return Err(anyhow!("hyperliquid status {}: {}", status, body));
+    }
+
+    let parsed: Value = serde_json::from_str(&body)
+        .with_context(|| format!("failed to parse hyperliquid JSON: {}", body))?;
+
+    // Response may be array or object with candles/data/result
+    if let Value::Array(_) = parsed {
+        let candles: Vec<Candle> = serde_json::from_value(parsed)
+            .with_context(|| "failed to decode hyperliquid candle array")?;
+        return Ok(candles);
+    }
+
+    if let Value::Object(map) = parsed {
+        if let Some(err) = map.get("error").or_else(|| map.get("message")) {
+            return Err(anyhow!("hyperliquid error: {}", err));
+        }
+        if let Some(arr) = map
+            .get("candles")
+            .or_else(|| map.get("data"))
+            .or_else(|| map.get("result"))
+        {
+            let candles: Vec<Candle> = serde_json::from_value(arr.clone())
+                .with_context(|| "failed to decode hyperliquid candle payload")?;
+            return Ok(candles);
+        }
+    }
+
+    Err(anyhow!("unexpected hyperliquid response: {}", body))
 }
 
 fn floor_to_hour(dt: DateTime<Utc>) -> DateTime<Utc> {
@@ -276,7 +404,17 @@ async fn main() -> Result<()> {
         .context("start time millis negative")?;
     let now_ms = u64::try_from(now.timestamp_millis()).context("now millis negative")?;
 
-    let mut candles = client.fetch_candles(&args.coin, args.limit).await?;
+    let mut candles = if args.use_hl {
+        fetch_hl_candles(
+            &Client::new(),
+            &args.coin,
+            start_ms,
+            now_ms,
+        )
+        .await?
+    } else {
+        client.fetch_candles(&args.coin, args.limit).await?
+    };
     candles.sort_by_key(|c| c.open_time);
 
     let window: Vec<Candle> = candles
