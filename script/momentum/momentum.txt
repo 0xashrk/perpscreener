@@ -1,0 +1,29 @@
+Vs hour-open: DOWN by -991.0000 (-1.3484%)
+Trend: 5m=DOWN (-0.7407%), 15m=DOWN (-0.9536%) → TRENDING strength=90/100
+Target band (5–15m): 71810.6558 to 71965.0070
+Agreement signal: CONTINUATION DOWN
+
+| Field | Value |
+|---|---|
+| start_time_utc | 2026-02-04T21:00:00+00:00 |
+| now_utc | 2026-02-04T21:47:14.904411+00:00 |
+| price_to_beat (open @ start) | 73493.0000 |
+| current_price | 72502.0000 |
+| direction_vs_open | DOWN |
+| delta_price | -991.0000 |
+| delta_pct | -1.3484% |
+| ret_5m | -0.7407% |
+| trend_5m | DOWN |
+| ret_15m | -0.9536% |
+| trend_15m | DOWN |
+| trend_regime | TRENDING |
+| trend_strength (0..100) | 90 |
+| target_band (5–15m) | [71810.6558, 71965.0070] |
+| current_streak | UP×1 |
+| longest_up_streak | 5 |
+| longest_down_streak | 8 |
+| vol_1m | 0.001040 |
+| window_high | 73640.0000 |
+| window_low | 72444.0000 |
+| range_pct | 1.6274% |
+| data_quality | OK |
