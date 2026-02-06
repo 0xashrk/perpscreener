@@ -1,29 +1,29 @@
-Vs hour-open: UP by 994.0000 (1.4141%)
-Trend: 5m=DOWN (-0.0869%), 15m=DOWN (-0.1373%) → TRENDING strength=15/100
-Target band (5–15m): 71189.1345 to 71225.0539
-Agreement signal: PULLBACK RISK (up hour, down micro)
+Vs hour-open: DOWN by -698.0000 (-0.9789%)
+Trend: 5m=DOWN (-0.6347%), 15m=DOWN (-1.4047%) → TRENDING strength=92/100
+Target band (5–15m): 69618.1314 to 70161.8623
+Agreement signal: CONTINUATION DOWN
 
 | Field | Value |
 |---|---|
-| start_time_utc | 2026-02-06T22:00:00+00:00 |
-| now_utc | 2026-02-06T22:53:10.901135444+00:00 |
-| price_to_beat (open @ start) | 70293.0000 |
-| current_price | 71287.0000 |
-| direction_vs_open | UP |
-| delta_price | 994.0000 |
-| delta_pct | 1.4141% |
-| ret_5m | -0.0869% |
+| start_time_utc | 2026-02-06T23:00:00+00:00 |
+| now_utc | 2026-02-06T23:19:01.353779123+00:00 |
+| price_to_beat (open @ start) | 71308.0000 |
+| current_price | 70610.0000 |
+| direction_vs_open | DOWN |
+| delta_price | -698.0000 |
+| delta_pct | -0.9789% |
+| ret_5m | -0.6347% |
 | trend_5m | DOWN |
-| ret_15m | -0.1373% |
+| ret_15m | -1.4047% |
 | trend_15m | DOWN |
 | trend_regime | TRENDING |
-| trend_strength (0..100) | 15 |
-| target_band (5–15m) | [71189.1345, 71225.0539] |
-| current_streak | DOWN×1 |
-| longest_up_streak | 7 |
-| longest_down_streak | 3 |
-| vol_1m | 0.001194 |
-| window_high | 71441.0000 |
-| window_low | 70213.0000 |
-| range_pct | 1.7470% |
+| trend_strength (0..100) | 92 |
+| target_band (5–15m) | [69618.1314, 70161.8623] |
+| current_streak | UP×1 |
+| longest_up_streak | 2 |
+| longest_down_streak | 9 |
+| vol_1m | 0.001646 |
+| window_high | 71684.0000 |
+| window_low | 70575.0000 |
+| range_pct | 1.5552% |
 | data_quality | OK |
