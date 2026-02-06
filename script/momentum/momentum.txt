@@ -1,29 +1,29 @@
-Vs hour-open: DOWN by -698.0000 (-0.9789%)
-Trend: 5m=DOWN (-0.6347%), 15m=DOWN (-1.4047%) → TRENDING strength=92/100
-Target band (5–15m): 69618.1314 to 70161.8623
+Vs hour-open: DOWN by -740.0000 (-1.0378%)
+Trend: 5m=DOWN (-0.2601%), 15m=DOWN (-0.2036%) → TRENDING strength=26/100
+Target band (5–15m): 70384.4785 to 70424.2932
 Agreement signal: CONTINUATION DOWN
 
 | Field | Value |
 |---|---|
 | start_time_utc | 2026-02-06T23:00:00+00:00 |
-| now_utc | 2026-02-06T23:19:01.353779123+00:00 |
+| now_utc | 2026-02-06T23:45:19.339089221+00:00 |
 | price_to_beat (open @ start) | 71308.0000 |
-| current_price | 70610.0000 |
+| current_price | 70568.0000 |
 | direction_vs_open | DOWN |
-| delta_price | -698.0000 |
-| delta_pct | -0.9789% |
-| ret_5m | -0.6347% |
+| delta_price | -740.0000 |
+| delta_pct | -1.0378% |
+| ret_5m | -0.2601% |
 | trend_5m | DOWN |
-| ret_15m | -1.4047% |
+| ret_15m | -0.2036% |
 | trend_15m | DOWN |
 | trend_regime | TRENDING |
-| trend_strength (0..100) | 92 |
-| target_band (5–15m) | [69618.1314, 70161.8623] |
-| current_streak | UP×1 |
-| longest_up_streak | 2 |
+| trend_strength (0..100) | 26 |
+| target_band (5–15m) | [70384.4785, 70424.2932] |
+| current_streak | DOWN×6 |
+| longest_up_streak | 3 |
 | longest_down_streak | 9 |
-| vol_1m | 0.001646 |
+| vol_1m | 0.001368 |
 | window_high | 71684.0000 |
-| window_low | 70575.0000 |
-| range_pct | 1.5552% |
+| window_low | 70477.0000 |
+| range_pct | 1.6927% |
 | data_quality | OK |
