@@ -1,29 +1,29 @@
-Vs hour-open: DOWN by -259.0000 (-0.3683%)
-Trend: 5m=DOWN (-0.1653%), 15m=DOWN (-0.3485%) → TRENDING strength=33/100
-Target band (5–15m): 69821.8537 to 69950.1917
-Agreement signal: CONTINUATION DOWN
+Vs hour-open: UP by 594.0000 (0.8511%)
+Trend: 5m=FLAT (0.0114%), 15m=UP (0.1138%) → CHOPPY strength=0/100
+Target band (5–15m): 70396.0009 to 70468.0910
+Agreement signal: RANGE/FAKEOUTS LIKELY
 
 | Field | Value |
 |---|---|
-| start_time_utc | 2026-02-09T23:00:00+00:00 |
-| now_utc | 2026-02-09T23:53:25.867870184+00:00 |
-| price_to_beat (open @ start) | 70325.0000 |
-| current_price | 70066.0000 |
-| direction_vs_open | DOWN |
-| delta_price | -259.0000 |
-| delta_pct | -0.3683% |
-| ret_5m | -0.1653% |
-| trend_5m | DOWN |
-| ret_15m | -0.3485% |
-| trend_15m | DOWN |
-| trend_regime | TRENDING |
-| trend_strength (0..100) | 33 |
-| target_band (5–15m) | [69821.8537, 69950.1917] |
-| current_streak | UP×1 |
-| longest_up_streak | 5 |
-| longest_down_streak | 6 |
-| vol_1m | 0.000590 |
-| window_high | 70537.0000 |
-| window_low | 70050.0000 |
-| range_pct | 0.6925% |
+| start_time_utc | 2026-02-10T01:00:00+00:00 |
+| now_utc | 2026-02-10T01:45:47.228564263+00:00 |
+| price_to_beat (open @ start) | 69794.0000 |
+| current_price | 70388.0000 |
+| direction_vs_open | UP |
+| delta_price | 594.0000 |
+| delta_pct | 0.8511% |
+| ret_5m | 0.0114% |
+| trend_5m | FLAT |
+| ret_15m | 0.1138% |
+| trend_15m | UP |
+| trend_regime | CHOPPY |
+| trend_strength (0..100) | 0 |
+| target_band (5–15m) | [70396.0009, 70468.0910] |
+| current_streak | DOWN×1 |
+| longest_up_streak | 4 |
+| longest_down_streak | 4 |
+| vol_1m | 0.000788 |
+| window_high | 70499.0000 |
+| window_low | 69780.0000 |
+| range_pct | 1.0302% |
 | data_quality | OK |
