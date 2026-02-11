@@ -1,29 +1,29 @@
-Vs hour-open: UP by 523.0000 (0.7867%)
-Trend: 5m=UP (0.2514%), 15m=UP (0.4347%) → TRENDING strength=39/100
-Target band (5–15m): 67171.4223 to 67294.2606
+Vs hour-open: UP by 421.0000 (0.6261%)
+Trend: 5m=UP (0.1361%), 15m=UP (0.2222%) → TRENDING strength=22/100
+Target band (5–15m): 67757.1253 to 67815.3333
 Agreement signal: CONTINUATION UP
 
 | Field | Value |
 |---|---|
-| start_time_utc | 2026-02-11T18:00:00+00:00 |
-| now_utc | 2026-02-11T18:38:48.069736847+00:00 |
-| price_to_beat (open @ start) | 66480.0000 |
-| current_price | 67003.0000 |
+| start_time_utc | 2026-02-11T19:00:00+00:00 |
+| now_utc | 2026-02-11T19:41:04.819953623+00:00 |
+| price_to_beat (open @ start) | 67244.0000 |
+| current_price | 67665.0000 |
 | direction_vs_open | UP |
-| delta_price | 523.0000 |
-| delta_pct | 0.7867% |
-| ret_5m | 0.2514% |
+| delta_price | 421.0000 |
+| delta_pct | 0.6261% |
+| ret_5m | 0.1361% |
 | trend_5m | UP |
-| ret_15m | 0.4347% |
+| ret_15m | 0.2222% |
 | trend_15m | UP |
 | trend_regime | TRENDING |
-| trend_strength (0..100) | 39 |
-| target_band (5–15m) | [67171.4223, 67294.2606] |
-| current_streak | UP×2 |
-| longest_up_streak | 6 |
-| longest_down_streak | 6 |
-| vol_1m | 0.001024 |
-| window_high | 67038.0000 |
-| window_low | 66119.0000 |
-| range_pct | 1.3824% |
+| trend_strength (0..100) | 22 |
+| target_band (5–15m) | [67757.1253, 67815.3333] |
+| current_streak | DOWN×1 |
+| longest_up_streak | 4 |
+| longest_down_streak | 3 |
+| vol_1m | 0.001213 |
+| window_high | 67724.0000 |
+| window_low | 67077.0000 |
+| range_pct | 0.9622% |
 | data_quality | OK |
