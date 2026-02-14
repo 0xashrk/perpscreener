@@ -1,29 +1,29 @@
-Vs hour-open: UP by 156.0000 (0.2247%)
-Trend: 5m=DOWN (-0.0976%), 15m=UP (0.0417%) → CHOPPY strength=0/100
-Target band (5–15m): 69516.0664 to 69613.0121
-Agreement signal: PULLBACK RISK (up hour, down micro)
+Vs hour-open: DOWN by -16.0000 (-0.0230%)
+Trend: 5m=DOWN (-0.1018%), 15m=FLAT (n/a) → CHOPPY strength=0/100
+Target band (5–15m): n/a
+Agreement signal: RANGE/FAKEOUTS LIKELY
 
 | Field | Value |
 |---|---|
-| start_time_utc | 2026-02-14T14:00:00+00:00 |
-| now_utc | 2026-02-14T14:49:34.805627816+00:00 |
-| price_to_beat (open @ start) | 69428.0000 |
-| current_price | 69584.0000 |
-| direction_vs_open | UP |
-| delta_price | 156.0000 |
-| delta_pct | 0.2247% |
-| ret_5m | -0.0976% |
+| start_time_utc | 2026-02-14T15:00:00+00:00 |
+| now_utc | 2026-02-14T15:12:53.101417772+00:00 |
+| price_to_beat (open @ start) | 69681.0000 |
+| current_price | 69665.0000 |
+| direction_vs_open | DOWN |
+| delta_price | -16.0000 |
+| delta_pct | -0.0230% |
+| ret_5m | -0.1018% |
 | trend_5m | DOWN |
-| ret_15m | 0.0417% |
-| trend_15m | UP |
+| ret_15m | n/a |
+| trend_15m | FLAT |
 | trend_regime | CHOPPY |
 | trend_strength (0..100) | 0 |
-| target_band (5–15m) | [69516.0664, 69613.0121] |
+| target_band (5–15m) | n/a |
 | current_streak | UP×1 |
-| longest_up_streak | 5 |
-| longest_down_streak | 4 |
-| vol_1m | 0.000547 |
-| window_high | 69656.0000 |
-| window_low | 69312.0000 |
-| range_pct | 0.4955% |
+| longest_up_streak | 2 |
+| longest_down_streak | 2 |
+| vol_1m | 0.000509 |
+| window_high | 69772.0000 |
+| window_low | 69642.0000 |
+| range_pct | 0.1866% |
 | data_quality | OK |
