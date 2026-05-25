@@ -1,10 +1,10 @@
 [package]
-name = "signal"
+name = "monitor"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "signal"
+name = "monitor"
 path = "src/main.rs"
 
 [dependencies]

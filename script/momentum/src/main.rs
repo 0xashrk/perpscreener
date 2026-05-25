@@ -1,22 +1,27 @@
-use std::cmp::Ordering;
+mod analysis;
+mod client;
+
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Timelike, Utc};
+use anyhow::{Context, Result};
+use chrono::Utc;
 use clap::Parser;
 use reqwest::Client;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::Value;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
+
+use analysis::{compute_momentum, floor_to_hour, format_pct, MomentumResult};
+use client::{fetch_hl_candles, fetch_top_assets, BackendClient};
 
 #[derive(Parser, Debug)]
-#[command(name = "momentum", about = "BTC intrahour momentum context (recipe)")]
+#[command(name = "momentum", about = "Intrahour momentum scanner")]
 struct Args {
-    /// Asset symbol (e.g., BTC, ETH)
-    #[arg(long)]
-    coin: String,
+    /// Asset symbol (e.g., BTC, ETH). Ignored when --top is used.
+    #[arg(long, required_unless_present = "top")]
+    coin: Option<String>,
 
     /// Backend base URL
     #[arg(long, default_value = "http://localhost:30001")]
@@ -29,559 +34,290 @@ struct Args {
     /// Number of 1m candles to pull (must cover current hour)
     #[arg(long, default_value_t = 180)]
     limit: usize,
+
+    /// Scan the top N assets by 24h volume from Hyperliquid
+    #[arg(long, conflicts_with = "coin")]
+    top: Option<usize>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct ChartSnapshot {
-    candles: Vec<Candle>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct Candle {
-    #[serde(rename = "t")]
-    open_time: u64,
-    #[serde(rename = "o", deserialize_with = "deserialize_string_to_f64")]
-    open: f64,
-    #[serde(rename = "h", deserialize_with = "deserialize_string_to_f64")]
-    high: f64,
-    #[serde(rename = "l", deserialize_with = "deserialize_string_to_f64")]
-    low: f64,
-    #[serde(rename = "c", deserialize_with = "deserialize_string_to_f64")]
-    close: f64,
-}
-
-fn deserialize_string_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct StringOrNumber;
-
-    impl<'de> serde::de::Visitor<'de> for StringOrNumber {
-        type Value = f64;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a string or number")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<f64, E>
-        where
-            E: serde::de::Error,
-        {
-            value.parse::<f64>().map_err(E::custom)
-        }
-
-        fn visit_string<E>(self, value: String) -> Result<f64, E>
-        where
-            E: serde::de::Error,
-        {
-            self.visit_str(&value)
-        }
-
-        fn visit_f64<E>(self, value: f64) -> Result<f64, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(value)
-        }
-
-        fn visit_i64<E>(self, value: i64) -> Result<f64, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(value as f64)
-        }
-
-        fn visit_u64<E>(self, value: u64) -> Result<f64, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(value as f64)
-        }
-    }
-
-    deserializer.deserialize_any(StringOrNumber)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Direction {
-    Up,
-    Down,
-    Flat,
-}
-
-impl Direction {
-    fn as_str(self) -> &'static str {
-        match self {
-            Direction::Up => "UP",
-            Direction::Down => "DOWN",
-            Direction::Flat => "FLAT",
-        }
+fn format_price(p: f64) -> String {
+    if p >= 1000.0 {
+        format!("{:.1}", p)
+    } else if p >= 1.0 {
+        format!("{:.3}", p)
+    } else if p >= 0.01 {
+        format!("{:.5}", p)
+    } else {
+        format!("{:.7}", p)
     }
 }
 
-struct BackendClient {
-    base_url: String,
-    client: Client,
-}
+fn format_single(r: &MomentumResult) -> String {
+    let mut out = String::new();
 
-impl BackendClient {
-    fn new(base_url: &str) -> Self {
-        Self {
-            base_url: base_url.trim_end_matches('/').to_string(),
-            client: Client::new(),
-        }
-    }
-
-    async fn fetch_candles(&self, coin: &str, limit: usize) -> Result<Vec<Candle>> {
-        let url = format!(
-            "{}/chart?coin={}&interval=1m&limit={}",
-            self.base_url, coin, limit
-        );
-
-        let snapshot: ChartSnapshot = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .context("failed to fetch candles")?
-            .error_for_status()
-            .context("chart request failed")?
-            .json()
-            .await
-            .context("failed to parse candles response")?;
-
-        if snapshot.candles.is_empty() {
-            return Err(anyhow!("no candles returned"));
-        }
-
-        Ok(snapshot.candles)
-    }
-}
-
-const HYPERLIQUID_API_URL: &str = "https://api.hyperliquid.xyz/info";
-
-#[derive(Debug, Serialize)]
-struct HlCandleRequest {
-    #[serde(rename = "type")]
-    request_type: String,
-    req: HlCandleRequestInner,
-}
-
-#[derive(Debug, Serialize)]
-struct HlCandleRequestInner {
-    coin: String,
-    interval: String,
-    #[serde(rename = "startTime")]
-    start_time: u64,
-    #[serde(rename = "endTime")]
-    end_time: u64,
-}
-
-async fn fetch_hl_candles(client: &Client, coin: &str, start_time: u64, end_time: u64) -> Result<Vec<Candle>> {
-    let request = HlCandleRequest {
-        request_type: "candleSnapshot".to_string(),
-        req: HlCandleRequestInner {
-            coin: coin.to_string(),
-            interval: "1m".to_string(),
-            start_time,
-            end_time,
-        },
+    let agreement_detail = match r.agreement {
+        "PULLBACK RISK" => "PULLBACK RISK (up hour, down micro)",
+        "RECLAIM RISK" => "RECLAIM RISK (down hour, up micro)",
+        "RANGE/FAKEOUTS" => "RANGE/FAKEOUTS LIKELY",
+        other => other,
     };
 
-    let resp = client
-        .post(HYPERLIQUID_API_URL)
-        .json(&request)
-        .send()
-        .await
-        .context("failed to send hyperliquid request")?;
-    let status = resp.status();
-    let body = resp.text().await.context("failed to read hyperliquid body")?;
-    if !status.is_success() {
-        return Err(anyhow!("hyperliquid status {}: {}", status, body));
+    writeln!(
+        &mut out,
+        "Vs hour-open: {} by {:.4} ({})",
+        r.direction_vs_open.as_str(),
+        r.delta_price,
+        format_pct(r.delta_pct)
+    )
+    .ok();
+    writeln!(
+        &mut out,
+        "Trend: 5m={} ({}), 15m={} ({}) -> {} strength={}/100",
+        r.trend_5m.as_str(),
+        r.ret_5m
+            .map(format_pct)
+            .unwrap_or_else(|| "n/a".to_string()),
+        r.trend_15m.as_str(),
+        r.ret_15m
+            .map(format_pct)
+            .unwrap_or_else(|| "n/a".to_string()),
+        r.trend_regime,
+        r.strength
+    )
+    .ok();
+    match r.target_band {
+        Some((lo, hi)) => writeln!(&mut out, "Target band (5-15m): {:.4} to {:.4}", lo, hi),
+        None => writeln!(&mut out, "Target band (5-15m): n/a"),
     }
+    .ok();
+    writeln!(&mut out, "Agreement signal: {}", agreement_detail).ok();
+    writeln!(&mut out).ok();
 
-    let parsed: Value = serde_json::from_str(&body)
-        .with_context(|| format!("failed to parse hyperliquid JSON: {}", body))?;
-
-    // Response may be array or object with candles/data/result
-    if let Value::Array(_) = parsed {
-        let candles: Vec<Candle> = serde_json::from_value(parsed)
-            .with_context(|| "failed to decode hyperliquid candle array")?;
-        return Ok(candles);
-    }
-
-    if let Value::Object(map) = parsed {
-        if let Some(err) = map.get("error").or_else(|| map.get("message")) {
-            return Err(anyhow!("hyperliquid error: {}", err));
+    writeln!(&mut out, "| Field | Value |").ok();
+    writeln!(&mut out, "|---|---|").ok();
+    writeln!(&mut out, "| start_time_utc | {} |", r.start_time.to_rfc3339()).ok();
+    writeln!(&mut out, "| now_utc | {} |", r.now.to_rfc3339()).ok();
+    writeln!(
+        &mut out,
+        "| price_to_beat (open @ start) | {:.4} |",
+        r.price_to_beat
+    )
+    .ok();
+    writeln!(&mut out, "| current_price | {:.4} |", r.current_price).ok();
+    writeln!(
+        &mut out,
+        "| direction_vs_open | {} |",
+        r.direction_vs_open.as_str()
+    )
+    .ok();
+    writeln!(&mut out, "| delta_price | {:.4} |", r.delta_price).ok();
+    writeln!(&mut out, "| delta_pct | {} |", format_pct(r.delta_pct)).ok();
+    writeln!(
+        &mut out,
+        "| ret_5m | {} |",
+        r.ret_5m
+            .map(format_pct)
+            .unwrap_or_else(|| "n/a".to_string())
+    )
+    .ok();
+    writeln!(&mut out, "| trend_5m | {} |", r.trend_5m.as_str()).ok();
+    writeln!(
+        &mut out,
+        "| ret_15m | {} |",
+        r.ret_15m
+            .map(format_pct)
+            .unwrap_or_else(|| "n/a".to_string())
+    )
+    .ok();
+    writeln!(&mut out, "| trend_15m | {} |", r.trend_15m.as_str()).ok();
+    writeln!(&mut out, "| trend_regime | {} |", r.trend_regime).ok();
+    writeln!(&mut out, "| trend_strength (0..100) | {} |", r.strength).ok();
+    match r.target_band {
+        Some((lo, hi)) => {
+            writeln!(&mut out, "| target_band (5-15m) | [{:.4}, {:.4}] |", lo, hi)
         }
-        if let Some(arr) = map
-            .get("candles")
-            .or_else(|| map.get("data"))
-            .or_else(|| map.get("result"))
-        {
-            let candles: Vec<Candle> = serde_json::from_value(arr.clone())
-                .with_context(|| "failed to decode hyperliquid candle payload")?;
-            return Ok(candles);
-        }
+        None => writeln!(&mut out, "| target_band (5-15m) | n/a |"),
     }
+    .ok();
+    writeln!(
+        &mut out,
+        "| current_streak | {}x{} |",
+        r.streaks.current.0.as_str(),
+        r.streaks.current.1
+    )
+    .ok();
+    writeln!(&mut out, "| longest_up_streak | {} |", r.streaks.longest_up).ok();
+    writeln!(
+        &mut out,
+        "| longest_down_streak | {} |",
+        r.streaks.longest_down
+    )
+    .ok();
+    writeln!(
+        &mut out,
+        "| vol_1m | {} |",
+        r.vol_1m
+            .map(|v| format!("{:.6}", v))
+            .unwrap_or_else(|| "n/a".to_string())
+    )
+    .ok();
+    writeln!(&mut out, "| window_high | {:.4} |", r.window_high).ok();
+    writeln!(&mut out, "| window_low | {:.4} |", r.window_low).ok();
+    writeln!(&mut out, "| resistance | {:.4} |", r.window_high).ok();
+    writeln!(&mut out, "| support | {:.4} |", r.window_low).ok();
+    writeln!(&mut out, "| range_pct | {} |", format_pct(r.range_pct)).ok();
+    writeln!(&mut out, "| data_quality | {} |", r.data_quality).ok();
 
-    Err(anyhow!("unexpected hyperliquid response: {}", body))
+    out
 }
 
-fn floor_to_hour(dt: DateTime<Utc>) -> DateTime<Utc> {
-    dt.date_naive()
-        .and_hms_opt(dt.hour(), 0, 0)
-        .unwrap()
-        .and_local_timezone(Utc)
-        .unwrap()
-}
+fn format_multi(results: &[MomentumResult]) -> String {
+    let mut out = String::new();
 
-fn candle_direction(c: &Candle) -> Direction {
-    if c.close > c.open {
-        Direction::Up
-    } else if c.close < c.open {
-        Direction::Down
-    } else {
-        Direction::Flat
-    }
-}
+    let header = results
+        .first()
+        .map(|r| r.start_time.format("%Y-%m-%d %H:00 UTC").to_string())
+        .unwrap_or_default();
+    writeln!(
+        &mut out,
+        "Intrahour Momentum Scanner — {} ({} assets)\n",
+        header,
+        results.len()
+    )
+    .ok();
 
-fn direction_vs_open(current: f64, start: f64) -> Direction {
-    match current.partial_cmp(&start).unwrap_or(Ordering::Equal) {
-        Ordering::Greater => Direction::Up,
-        Ordering::Less => Direction::Down,
-        Ordering::Equal => Direction::Flat,
-    }
-}
+    writeln!(
+        &mut out,
+        "| # | Coin | Price | vs Open | Delta% | 5m | 15m | Regime | Str | Streak | Vol | Signal |"
+    )
+    .ok();
+    writeln!(
+        &mut out,
+        "|---|------|-------|---------|--------|----|-----|--------|-----|--------|-----|--------|"
+    )
+    .ok();
 
-fn ret_over_minutes(candles: &[Candle], minutes: usize) -> Option<f64> {
-    if candles.len() <= minutes {
-        return None;
-    }
-    let last = candles.last()?;
-    let idx = candles.len().checked_sub(minutes + 1)?;
-    let prior = candles.get(idx)?;
-    Some(last.close / prior.close - 1.0)
-}
-
-fn trend_label(ret: Option<f64>) -> Direction {
-    match ret {
-        Some(r) if r.abs() >= 0.0002 => {
-            if r > 0.0 {
-                Direction::Up
-            } else {
-                Direction::Down
-            }
-        }
-        _ => Direction::Flat,
-    }
-}
-
-fn stddev(values: &[f64]) -> Option<f64> {
-    if values.len() < 2 {
-        return None;
-    }
-    let mean: f64 = values.iter().copied().sum::<f64>() / values.len() as f64;
-    let var: f64 = values
-        .iter()
-        .map(|v| {
-            let d = v - mean;
-            d * d
-        })
-        .sum::<f64>()
-        / (values.len() as f64 - 1.0);
-    Some(var.sqrt())
-}
-
-fn log_return_series(candles: &[Candle]) -> Vec<f64> {
-    candles
-        .windows(2)
-        .filter_map(|w| {
-            let prev = &w[0];
-            let curr = &w[1];
-            if prev.close <= 0.0 || curr.close <= 0.0 {
-                return None;
-            }
-            Some((curr.close / prev.close).ln())
-        })
-        .collect()
-}
-
-#[derive(Debug)]
-struct Streaks {
-    current: (Direction, usize),
-    longest_up: usize,
-    longest_down: usize,
-}
-
-fn compute_streaks(candles: &[Candle]) -> Option<Streaks> {
-    if candles.is_empty() {
-        return None;
+    for (i, r) in results.iter().enumerate() {
+        writeln!(
+            &mut out,
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {}x{} | {} | {} |",
+            i + 1,
+            r.coin,
+            format_price(r.current_price),
+            r.direction_vs_open.as_str(),
+            format_pct(r.delta_pct),
+            r.trend_5m.as_str(),
+            r.trend_15m.as_str(),
+            r.trend_regime,
+            r.strength,
+            r.streaks.current.0.as_str(),
+            r.streaks.current.1,
+            r.vol_1m
+                .map(|v| format!("{:.6}", v))
+                .unwrap_or_else(|| "n/a".to_string()),
+            r.agreement,
+        )
+        .ok();
     }
 
-    let mut runs: Vec<(Direction, usize)> = Vec::new();
-    for candle in candles {
-        let dir = candle_direction(candle);
-        match runs.last_mut() {
-            Some((last_dir, len)) if *last_dir == dir => *len += 1,
-            _ => runs.push((dir, 1)),
-        }
-    }
-
-    let current = *runs.last()?;
-    let mut longest_up = 0;
-    let mut longest_down = 0;
-    for (dir, len) in &runs {
-        match dir {
-            Direction::Up => longest_up = longest_up.max(*len),
-            Direction::Down => longest_down = longest_down.max(*len),
-            Direction::Flat => {}
-        }
-    }
-
-    Some(Streaks {
-        current,
-        longest_up,
-        longest_down,
-    })
-}
-
-fn trend_strength(ret5: Option<f64>, ret15: Option<f64>, vol: Option<f64>, regime: &str) -> u64 {
-    let mag = match (ret5, ret15) {
-        (Some(a), Some(b)) => (a.abs() + b.abs()) / 2.0,
-        (Some(a), None) | (None, Some(a)) => a.abs(),
-        _ => 0.0,
-    };
-
-    let mut strength = (mag * 10_000.0).clamp(0.0, 100.0);
-
-    if regime == "TRENDING" {
-        strength = (strength + 10.0).min(100.0);
-    } else if regime == "CHOPPY" {
-        strength = (strength - 15.0).max(0.0);
-    }
-
-    if let Some(v) = vol {
-        // Penalize realized volatility; typical vol ~0.001 => subtract ~5
-        let penalty = (v * 5_000.0).min(30.0);
-        strength = (strength - penalty).max(0.0);
-    }
-
-    strength.round() as u64
-}
-
-fn format_pct(v: f64) -> String {
-    format!("{:.4}%", v * 100.0)
-}
-
-fn build_data_quality(alignment_ok: bool, has_gaps: bool, missing_candles: bool) -> String {
-    let mut issues = Vec::new();
-    if !alignment_ok {
-        issues.push("alignment warning");
-    }
-    if has_gaps {
-        issues.push("gaps");
-    }
-    if missing_candles {
-        issues.push("missing candles");
-    }
-
-    if issues.is_empty() {
-        "OK".to_string()
-    } else {
-        issues.join("; ")
-    }
+    out
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let client = BackendClient::new(&args.backend);
 
     let now = Utc::now();
     let start_time = floor_to_hour(now);
-    let start_ms = u64::try_from(start_time.timestamp_millis())
-        .context("start time millis negative")?;
+    let start_ms =
+        u64::try_from(start_time.timestamp_millis()).context("start time millis negative")?;
     let now_ms = u64::try_from(now.timestamp_millis()).context("now millis negative")?;
 
-    let mut candles = if args.use_hl {
-        fetch_hl_candles(
-            &Client::new(),
-            &args.coin,
-            start_ms,
-            now_ms,
-        )
-        .await?
+    let use_hl = args.use_hl || args.top.is_some();
+
+    let coins: Vec<String> = if let Some(n) = args.top {
+        let client = Client::new();
+        eprintln!("Fetching top {} assets by 24h volume...", n);
+        fetch_top_assets(&client, n).await?
     } else {
-        client.fetch_candles(&args.coin, args.limit).await?
-    };
-    candles.sort_by_key(|c| c.open_time);
-
-    let window: Vec<Candle> = candles
-        .into_iter()
-        .filter(|c| c.open_time >= start_ms && c.open_time <= now_ms)
-        .collect();
-
-    let elapsed_minutes = ((now_ms - start_ms) / 60_000) as usize;
-    let expected_candles = elapsed_minutes + 1; // inclusive of the starting minute
-
-    if window.len() < expected_candles {
-        return Err(anyhow!(
-            "insufficient candles in current hour: expected at least {}, got {}",
-            expected_candles,
-            window.len()
-        ));
-    }
-
-    let first = &window[0];
-    let last = &window[window.len() - 1];
-    let alignment_ok = first.open_time == start_ms;
-
-    let has_gaps = window
-        .windows(2)
-        .any(|w| w[1].open_time != w[0].open_time + 60_000);
-
-    let price_to_beat = first.open;
-    let current_price = last.close;
-    let delta_price = current_price - price_to_beat;
-    let delta_pct = delta_price / price_to_beat;
-    let direction_vs_open = direction_vs_open(current_price, price_to_beat);
-
-    let ret_5m = ret_over_minutes(&window, 5);
-    let ret_15m = ret_over_minutes(&window, 15);
-
-    let trend_5m = trend_label(ret_5m);
-    let trend_15m = trend_label(ret_15m);
-
-    let trend_regime = match (trend_5m, trend_15m) {
-        (Direction::Flat, Direction::Flat) => "DRIFT/FLAT",
-        (a, b) if a == b && a != Direction::Flat => "TRENDING",
-        _ => "CHOPPY",
+        vec![args.coin.unwrap_or_else(|| "BTC".to_string())]
     };
 
-    let vol_series = log_return_series(&window);
-    let vol_1m = stddev(&vol_series);
+    let multi = coins.len() > 1;
 
-    let strength = trend_strength(ret_5m, ret_15m, vol_1m, trend_regime);
-
-    let proj_5m = ret_5m.map(|r| current_price * (1.0 + r));
-    let proj_15m = ret_15m.map(|r| current_price * (1.0 + r));
-    let target_band = match (proj_5m, proj_15m) {
-        (Some(a), Some(b)) => Some((a.min(b), a.max(b))),
-        _ => None,
-    };
-
-    let streaks = compute_streaks(&window).context("failed to compute streaks")?;
-
-    let window_high = window.iter().map(|c| c.high).fold(f64::MIN, f64::max);
-    let window_low = window.iter().map(|c| c.low).fold(f64::MAX, f64::min);
-    let range_pct = (window_high - window_low) / price_to_beat;
-
-    let missing_candles = window.len() < expected_candles;
-    let data_quality = build_data_quality(alignment_ok, has_gaps, missing_candles);
-
-    // Agreement signal per recipe
-    let agreement = match (direction_vs_open, trend_regime, trend_5m) {
-        (Direction::Up, "TRENDING", Direction::Up) => "CONTINUATION UP",
-        (Direction::Down, "TRENDING", Direction::Down) => "CONTINUATION DOWN",
-        (Direction::Up, _, Direction::Down) => "PULLBACK RISK (up hour, down micro)",
-        (Direction::Down, _, Direction::Up) => "RECLAIM RISK (down hour, up micro)",
-        (_, "CHOPPY", _) => "RANGE/FAKEOUTS LIKELY",
-        _ => "NEUTRAL",
-    };
-
-    let mut out = String::new();
-
-    writeln!(
-        &mut out,
-        "Vs hour-open: {} by {:.4} ({})",
-        direction_vs_open.as_str(),
-        delta_price,
-        format_pct(delta_pct)
-    )?;
-    writeln!(
-        &mut out,
-        "Trend: 5m={} ({}), 15m={} ({}) → {} strength={}/100",
-        trend_5m.as_str(),
-        ret_5m.map(format_pct).unwrap_or_else(|| "n/a".to_string()),
-        trend_15m.as_str(),
-        ret_15m.map(format_pct).unwrap_or_else(|| "n/a".to_string()),
-        trend_regime,
-        strength
-    )?;
-    if let Some((lo, hi)) = target_band {
-        writeln!(&mut out, "Target band (5–15m): {:.4} to {:.4}", lo, hi)?;
+    let (mut results, errors) = if use_hl {
+        scan_hl(&coins, start_ms, now_ms, now, start_time).await
     } else {
-        writeln!(&mut out, "Target band (5–15m): n/a")?;
-    }
-    writeln!(&mut out, "Agreement signal: {}", agreement)?;
-    writeln!(&mut out)?;
+        let backend = BackendClient::new(&args.backend);
+        let coin = &coins[0];
+        let candles = backend.fetch_candles(coin, args.limit).await?;
+        match compute_momentum(coin, candles, now, start_time) {
+            Ok(r) => (vec![r], vec![]),
+            Err(e) => (vec![], vec![(coin.clone(), e.to_string())]),
+        }
+    };
 
-    writeln!(&mut out, "| Field | Value |")?;
-    writeln!(&mut out, "|---|---|")?;
-    writeln!(&mut out, "| start_time_utc | {} |", start_time.to_rfc3339())?;
-    writeln!(&mut out, "| now_utc | {} |", now.to_rfc3339())?;
-    writeln!(
-        &mut out,
-        "| price_to_beat (open @ start) | {:.4} |",
-        price_to_beat
-    )?;
-    writeln!(&mut out, "| current_price | {:.4} |", current_price)?;
-    writeln!(
-        &mut out,
-        "| direction_vs_open | {} |",
-        direction_vs_open.as_str()
-    )?;
-    writeln!(&mut out, "| delta_price | {:.4} |", delta_price)?;
-    writeln!(&mut out, "| delta_pct | {} |", format_pct(delta_pct))?;
-    writeln!(
-        &mut out,
-        "| ret_5m | {} |",
-        ret_5m.map(format_pct).unwrap_or_else(|| "n/a".to_string())
-    )?;
-    writeln!(&mut out, "| trend_5m | {} |", trend_5m.as_str())?;
-    writeln!(
-        &mut out,
-        "| ret_15m | {} |",
-        ret_15m.map(format_pct).unwrap_or_else(|| "n/a".to_string())
-    )?;
-    writeln!(&mut out, "| trend_15m | {} |", trend_15m.as_str())?;
-    writeln!(&mut out, "| trend_regime | {} |", trend_regime)?;
-    writeln!(&mut out, "| trend_strength (0..100) | {} |", strength)?;
-    match target_band {
-        Some((lo, hi)) => writeln!(
-            &mut out,
-            "| target_band (5–15m) | [{:.4}, {:.4}] |",
-            lo,
-            hi
-        )?,
-        None => writeln!(&mut out, "| target_band (5–15m) | n/a |")?,
-    }
-    writeln!(
-        &mut out,
-        "| current_streak | {}×{} |",
-        streaks.current.0.as_str(),
-        streaks.current.1
-    )?;
-    writeln!(&mut out, "| longest_up_streak | {} |", streaks.longest_up)?;
-    writeln!(&mut out, "| longest_down_streak | {} |", streaks.longest_down)?;
-    writeln!(
-        &mut out,
-        "| vol_1m | {} |",
-        vol_1m
-            .map(|v| format!("{:.6}", v))
-            .unwrap_or_else(|| "n/a".to_string())
-    )?;
-    writeln!(&mut out, "| window_high | {:.4} |", window_high)?;
-    writeln!(&mut out, "| window_low | {:.4} |", window_low)?;
-    writeln!(&mut out, "| range_pct | {} |", format_pct(range_pct))?;
-    writeln!(&mut out, "| data_quality | {} |", data_quality)?;
+    // Preserve original volume ranking order.
+    results.sort_by_key(|r| coins.iter().position(|c| c == &r.coin).unwrap_or(usize::MAX));
 
-    // Write output both to stdout and to file under script/momentum/momentum.txt
+    let out = if multi {
+        format_multi(&results)
+    } else if let Some(r) = results.first() {
+        format_single(r)
+    } else {
+        "No results.\n".to_string()
+    };
+
     print!("{}", out);
+
+    if !errors.is_empty() && multi {
+        eprintln!("\nSkipped {} assets (insufficient data):", errors.len());
+        for (coin, err) in &errors {
+            eprintln!("  {}: {}", coin, err);
+        }
+    }
+
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("momentum.txt");
-    fs::write(&path, &out)
-        .with_context(|| format!("failed to write {}", path.display()))?;
+    fs::write(&path, &out).with_context(|| format!("failed to write {}", path.display()))?;
 
     Ok(())
+}
+
+/// Fetch candles from Hyperliquid for all coins concurrently (max 10 in-flight).
+async fn scan_hl(
+    coins: &[String],
+    start_ms: u64,
+    now_ms: u64,
+    now: chrono::DateTime<Utc>,
+    start_time: chrono::DateTime<Utc>,
+) -> (Vec<MomentumResult>, Vec<(String, String)>) {
+    let hl_client = Client::new();
+    let sem = Arc::new(Semaphore::new(10));
+    let mut set = JoinSet::new();
+
+    for coin in coins.iter().cloned() {
+        let client = hl_client.clone();
+        let sem = sem.clone();
+        set.spawn(async move {
+            let _permit = sem.acquire().await.unwrap();
+            let candles = fetch_hl_candles(&client, &coin, start_ms, now_ms).await;
+            (coin, candles)
+        });
+    }
+
+    let mut results = Vec::new();
+    let mut errors = Vec::new();
+
+    while let Some(res) = set.join_next().await {
+        match res {
+            Ok((coin, Ok(candles))) => match compute_momentum(&coin, candles, now, start_time) {
+                Ok(m) => results.push(m),
+                Err(e) => errors.push((coin, e.to_string())),
+            },
+            Ok((coin, Err(e))) => errors.push((coin, e.to_string())),
+            Err(e) => eprintln!("task panic: {}", e),
+        }
+    }
+
+    (results, errors)
 }

@@ -41,6 +41,7 @@ All data fetched from backend endpoints:
 - Target band: `proj_5m`, `proj_15m`, `target_band = [min, max]`
 - Streaks over 1m candles: current streak, longest up, longest down, compact breakdown
 - Volatility/range: log-return stdev (`vol_1m`), `window_high`, `window_low`, `range_pct`
+- Support/resistance: `support` = intrahour low (`window_low`), `resistance` = intrahour high (`window_high`)
 
 ## Output
 
@@ -68,6 +69,8 @@ All data fetched from backend endpoints:
 | vol_1m |  |
 | window_high |  |
 | window_low |  |
+| resistance |  |
+| support |  |
 | range_pct |  |
 | data_quality | OK / gaps / alignment warning / missing candles |
 

@@ -5,6 +5,8 @@ members = [
     "script/signal",
     "script/scalper",
     "script/momentum",
+    "script/monitor",
+    "script/strattest",
 ]
 
 [package]

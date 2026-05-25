@@ -1,29 +1,14 @@
-Vs hour-open: UP by 299.0000 (0.4516%)
-Trend: 5m=DOWN (-0.0511%), 15m=UP (0.0376%) → CHOPPY strength=0/100
-Target band (5–15m): 66474.0174 to 66533.0094
-Agreement signal: PULLBACK RISK (up hour, down micro)
+Intrahour Momentum Scanner — 2026-05-23 14:00 UTC (10 assets)
 
-| Field | Value |
-|---|---|
-| start_time_utc | 2026-02-25T14:00:00+00:00 |
-| now_utc | 2026-02-25T14:31:42.281036287+00:00 |
-| price_to_beat (open @ start) | 66209.0000 |
-| current_price | 66508.0000 |
-| direction_vs_open | UP |
-| delta_price | 299.0000 |
-| delta_pct | 0.4516% |
-| ret_5m | -0.0511% |
-| trend_5m | DOWN |
-| ret_15m | 0.0376% |
-| trend_15m | UP |
-| trend_regime | CHOPPY |
-| trend_strength (0..100) | 0 |
-| target_band (5–15m) | [66474.0174, 66533.0094] |
-| current_streak | UP×1 |
-| longest_up_streak | 5 |
-| longest_down_streak | 1 |
-| vol_1m | 0.000555 |
-| window_high | 66591.0000 |
-| window_low | 66180.0000 |
-| range_pct | 0.6208% |
-| data_quality | OK |
+| # | Coin | Price | vs Open | Delta% | 5m | 15m | Regime | Str | Streak | Vol | Signal |
+|---|------|-------|---------|--------|----|-----|--------|-----|--------|-----|--------|
+| 1 | BTC | 75323.0 | UP | 0.1995% | UP | UP | TRENDING | 20 | UPx2 | 0.000405 | CONTINUATION UP |
+| 2 | ETH | 2047.5 | UP | 0.1908% | UP | UP | TRENDING | 21 | DOWNx2 | 0.000453 | CONTINUATION UP |
+| 3 | HYPE | 55.676 | UP | 0.9373% | DOWN | UP | CHOPPY | 0 | DOWNx3 | 0.001402 | PULLBACK RISK |
+| 4 | ZEC | 588.270 | UP | 0.9455% | UP | UP | TRENDING | 31 | DOWNx2 | 0.001636 | CONTINUATION UP |
+| 5 | SOL | 83.629 | UP | 0.5555% | UP | UP | TRENDING | 36 | DOWNx1 | 0.000581 | CONTINUATION UP |
+| 6 | NEAR | 2.164 | UP | 2.7882% | UP | UP | TRENDING | 56 | DOWNx3 | 0.003154 | CONTINUATION UP |
+| 7 | TON | 1.759 | UP | 0.5660% | DOWN | UP | CHOPPY | 0 | DOWNx3 | 0.001397 | PULLBACK RISK |
+| 8 | LIT | 1.217 | UP | 2.1573% | UP | UP | TRENDING | 78 | DOWNx3 | 0.004494 | CONTINUATION UP |
+| 9 | DOGE | 0.10032 | DOWN | -0.1890% | UP | UP | TRENDING | 15 | FLATx1 | 0.000582 | RECLAIM RISK |
+| 10 | ONDO | 0.40654 | UP | 1.1218% | UP | UP | TRENDING | 28 | DOWNx3 | 0.002261 | CONTINUATION UP |
