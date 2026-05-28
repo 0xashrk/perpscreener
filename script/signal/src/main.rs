@@ -1,4 +1,5 @@
 mod client;
+mod daily_ctx;
 mod decision;
 mod indicators;
 mod macro_ctx;
@@ -17,6 +18,7 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use client::{fetch_asset_max_leverage, fetch_candles, fetch_l2_book, fetch_top_assets, AssetMeta};
+use daily_ctx::{compute_daily, compute_volume, DailyContext, VolumeContext};
 use decision::{decide, Signal, Strategy, TradeDecision};
 use indicators::{compute_bb, compute_rsi};
 use macro_ctx::{compute_macro, MacroContext};
@@ -56,6 +58,8 @@ struct CoinResult {
     mic: MicroContext,
     vwap: VwapContext,
     rsi: Option<f64>,
+    daily: Option<DailyContext>,
+    volume: Option<VolumeContext>,
 }
 
 async fn scan_coin(
@@ -83,10 +87,14 @@ async fn scan_coin(
     let start_4h = now_ms - 201 * 3_600_000;
     let start_1h = now_ms - 5 * 24 * 3_600_000;
 
-    let (c4h, c1h, c15m, ob) = tokio::try_join!(
+    // 30 days of daily candles for structure levels.
+    let start_1d = now_ms - 30 * 24 * 3_600_000;
+
+    let (c4h, c1h, c15m, c1d, ob) = tokio::try_join!(
         fetch_candles(client, coin, "4h", start_4h, now_ms),
         fetch_candles(client, coin, "1h", start_1h, now_ms),
         fetch_candles(client, coin, "15m", candle_15m_start, now_ms),
+        fetch_candles(client, coin, "1d", start_1d, now_ms),
         fetch_l2_book(client, coin),
     )?;
 
@@ -113,7 +121,18 @@ async fn scan_coin(
         bb_tight_threshold,
     );
 
-    let d = decide(&mac, &mic, &vwap_ctx, regime, bb.as_ref(), rsi, av, asset_max_lev);
+    // Daily structure: 20-day high/low resistance/support zones.
+    // Drop most recent daily candle (not closed).
+    let closed_1d = if c1d.len() > 1 { &c1d[..c1d.len() - 1] } else { &c1d };
+    let daily = compute_daily(closed_1d, price);
+
+    // Volume trend from 15m candles.
+    let volume = compute_volume(&c15m);
+
+    let d = decide(
+        &mac, &mic, &vwap_ctx, regime, bb.as_ref(), rsi, av, asset_max_lev,
+        daily.as_ref(), volume.as_ref(),
+    );
 
     Ok(CoinResult {
         coin: coin.to_string(),
@@ -123,6 +142,8 @@ async fn scan_coin(
         mic,
         vwap: vwap_ctx,
         rsi,
+        daily,
+        volume,
     })
 }
 
@@ -290,6 +311,27 @@ fn format_single(r: &CoinResult, av: f64) -> String {
             .unwrap_or_default()
     )
     .ok();
+    if let Some(ref dc) = r.daily {
+        writeln!(
+            &mut out,
+            "Daily:   20d hi={} lo={} | price {:+.1}% from hi{}",
+            fmt_price(dc.daily_high),
+            fmt_price(dc.daily_low),
+            dc.pct_from_high * 100.0,
+            if dc.near_resistance { " *** RESISTANCE ZONE ***" } else { "" }
+        )
+        .ok();
+    }
+    if let Some(ref vc) = r.volume {
+        writeln!(
+            &mut out,
+            "Volume:  ratio={:.2}x avg{}{}",
+            vc.vol_ratio,
+            if vc.vol_declining { " | DECLINING" } else { "" },
+            if vc.vol_confirms { " | CONFIRMS" } else { "" }
+        )
+        .ok();
+    }
 
     out
 }

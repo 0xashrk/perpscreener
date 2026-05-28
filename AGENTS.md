@@ -11,6 +11,7 @@ Guidelines:
 - Frontend: `guidelines/frontend_guidelines.md`
 - OpenAPI: `guidelines/openapi_guidelines.md`
 - Scripts: `guidelines/scripts_guidelines.md`
+- Backtesting: `guidelines/backtest_guidelines.md`
 
 ## Language Guidance
 
@@ -20,6 +21,7 @@ Guidelines:
 - In Rust code I prefer using `crate::` to `super::`; please don't use `super::`. If you see a lingering `super::` from someone else clean it up.
 - Avoid `pub use` on imports unless you are re-exposing a dependency so downstream consumers do not have to depend on it directly.
 - Skip global state via `lazy_static!`, `Once`, or similar; prefer passing explicit context structs for any shared state.
+- **Zero Rust warnings.** Fix all compiler warnings before considering a task done. Use `#[allow(dead_code)]` on structs with fields kept for completeness, but never leave unused imports, unused variables, or unused mut warnings.
 
 #### Rust Workflow Checklist
 
@@ -47,7 +49,17 @@ src/
   errors/          # AppError and error payloads
 frontend/          # React + TypeScript frontend (separate app)
 script/            # standalone Rust CLI tools
-  backtest/        # backtest tool for trading recipes
+  signal/          # V2 trade signal scanner (VWAP, regime, daily structure)
+  momentum/        # intrahour momentum scanner
+  monitor/         # position monitor (exit signal watcher)
+  strattest/       # strategy backtester
+  obdata/          # historical orderbook data pipeline (Tardis.dev + 0xArchive)
+  backtest/        # legacy backtest data feeder
+  scalper/         # scalper paper trading CLI
+data/              # local data files (git-ignored)
+  candles/         # historical candle CSVs from 0xArchive
+  ob/              # historical orderbook CSVs
+  pnl/             # backtest PnL export CSVs
 ```
 
 Folder docs:
@@ -63,6 +75,7 @@ Folder docs:
 
 - Always add tests for new or changed behavior.
 - Keep code modularized: isolate features, keep layers clean, avoid large mixed-responsibility files.
+- **Zero Rust warnings.** Fix all compiler warnings before considering a task done.
 
 ## Development
 
@@ -75,3 +88,7 @@ After adding or modifying backend endpoints, update the OpenAPI JSON files. See 
 ## Scripts
 
 Standalone CLI tools live in `script/`. See `guidelines/scripts_guidelines.md`.
+
+## Backtesting
+
+See `guidelines/backtest_guidelines.md` for data sources, fee model, and how to run backtests.

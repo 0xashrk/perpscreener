@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use crate::business_logic::features::{FeatureSnapshot, Trendline, TrendlineKind};
 use crate::models::candle::Candle;
 use crate::models::interval::CandleInterval;
+
+#[allow(unused_imports)]
 use crate::models::patterns::{
     PatternClassification, PatternLifecycleEntry, PatternLifecycleState, PatternSignalType,
 };

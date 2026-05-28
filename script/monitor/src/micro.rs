@@ -22,6 +22,7 @@ impl Direction {
 }
 
 /// Snapshot of intrahour momentum state at a given moment.
+#[allow(dead_code)]
 pub struct MicroSnapshot {
     pub price: f64,
     pub direction_vs_open: Direction,

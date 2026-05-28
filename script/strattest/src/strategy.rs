@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::data::Candle;
 
 // -- Enums -------------------------------------------------------------------
@@ -243,6 +241,7 @@ fn trend_strength(r1: Option<f64>, r4: Option<f64>, vol: Option<f64>, regime: &s
 const MAX_LEV: f64 = 5.0;
 const MIN_STOP_PCT: f64 = 0.003;
 
+#[allow(dead_code)]
 pub struct TradeSetup {
     pub signal: Signal,
     pub conviction: Conviction,
@@ -257,28 +256,40 @@ pub struct TradeSetup {
 pub fn decide(
     mac: &MacroCtx, mic: &MicroCtx, vwap: &VwapCtx,
     regime: Regime, bb: Option<&BollingerBands>, rsi: Option<f64>, equity: f64,
+    ob_imbalance: Option<f64>, spread_pct: Option<f64>,
 ) -> TradeSetup {
     let flat = TradeSetup {
         signal: Signal::Flat, conviction: Conviction::Weak, strategy: Strategy::None,
         entry: mic.price, size_asset: 0.0, risk_usd: 0.0, sl: 0.0, tp: 0.0,
     };
+    // Spread gate.
+    if let Some(sp) = spread_pct {
+        if sp > 0.001 { return flat; }
+    }
+
     match regime {
-        Regime::Trending => decide_trend(mac, mic, vwap, equity).unwrap_or(flat),
+        Regime::Trending => decide_trend(mac, mic, vwap, equity, ob_imbalance).unwrap_or(flat),
         Regime::Ranging => decide_mr(mic, bb, rsi, equity).unwrap_or(flat),
         Regime::Choppy => flat,
     }
 }
 
-fn decide_trend(mac: &MacroCtx, mic: &MicroCtx, vwap: &VwapCtx, equity: f64) -> Option<TradeSetup> {
+fn decide_trend(mac: &MacroCtx, mic: &MicroCtx, vwap: &VwapCtx, equity: f64, ob_imb: Option<f64>) -> Option<TradeSetup> {
     if mac.trend_strength < 0.001 { return None; }
     match mic.agreement {
         "PULLBACK RISK" | "RECLAIM RISK" | "RANGE/FAKEOUTS" => return None,
         _ => {}
     }
+    // OB confirms: imbalance >= 1.05 for longs, <= 0.95 for shorts.
+    let ob_confirms_long = ob_imb.map(|v| v >= 1.05).unwrap_or(true);
+    let ob_confirms_short = ob_imb.map(|v| v <= 0.95).unwrap_or(true);
+
     let (signal, conviction) = if mac.bull && mic.agreement == "CONTINUATION UP" {
-        (Signal::Long, if mac.at_breakout_long { Conviction::Strong } else { Conviction::Normal })
+        let strong = mac.at_breakout_long && ob_confirms_long;
+        (Signal::Long, if strong { Conviction::Strong } else { Conviction::Normal })
     } else if !mac.bull && mic.agreement == "CONTINUATION DOWN" {
-        (Signal::Short, if mac.at_breakout_short { Conviction::Strong } else { Conviction::Normal })
+        let strong = mac.at_breakout_short && ob_confirms_short;
+        (Signal::Short, if strong { Conviction::Strong } else { Conviction::Normal })
     } else if mac.bull && mic.agreement == "NEUTRAL" && mic.strength > 20 {
         (Signal::Long, Conviction::Weak)
     } else if !mac.bull && mic.agreement == "NEUTRAL" && mic.strength > 20 {

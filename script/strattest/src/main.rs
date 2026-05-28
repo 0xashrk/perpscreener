@@ -11,7 +11,7 @@ use clap::Parser;
 use reqwest::Client;
 
 use data::fetch_all_candles;
-use engine::{run, TradeRecord};
+use engine::{run, ObRecord, TradeRecord};
 use strategy::{Signal, Strategy};
 
 #[derive(Parser, Debug)]
@@ -40,6 +40,10 @@ struct Args {
     /// Micro candle interval: 1m, 5m, or 15m (default: 5m for long backtests)
     #[arg(long, default_value = "5m")]
     micro_interval: String,
+
+    /// Export PnL breakdown CSVs to this directory
+    #[arg(long)]
+    csv_dir: Option<String>,
 }
 
 #[tokio::main]
@@ -72,10 +76,17 @@ async fn main() -> Result<()> {
         other => anyhow::bail!("unsupported micro interval: {}", other),
     };
 
-    eprintln!("  {} candles (this may take a moment)...", args.micro_interval);
-    let candles_1m = fetch_all_candles(&client, &args.coin, &args.micro_interval, start_ms, now_ms)
-        .await
-        .context("micro candle fetch failed")?;
+    // Try loading micro candles from local CSV first (0xArchive export).
+    let csv_path = format!("data/candles/{}_15m.csv", args.coin.to_lowercase());
+    let candles_1m = if candle_minutes == 15 && std::path::Path::new(&csv_path).exists() {
+        eprintln!("  Loading 15m candles from {}...", csv_path);
+        load_candles_csv(&csv_path)?
+    } else {
+        eprintln!("  {} candles (fetching from HL)...", args.micro_interval);
+        fetch_all_candles(&client, &args.coin, &args.micro_interval, start_ms, now_ms)
+            .await
+            .context("micro candle fetch failed")?
+    };
 
     eprintln!(
         "Data: {} 4h, {} 1h, {} 1m candles\n",
@@ -83,6 +94,15 @@ async fn main() -> Result<()> {
         candles_1h.len(),
         candles_1m.len()
     );
+
+    // Load OB data if available.
+    let ob_path = format!("data/ob/{}_ob.csv", args.coin.to_lowercase());
+    let ob_data = load_ob_csv(&ob_path);
+    if ob_data.is_empty() {
+        eprintln!("No OB data at {} — running without OB gates", ob_path);
+    } else {
+        eprintln!("Loaded {} OB snapshots from {}", ob_data.len(), ob_path);
+    }
 
     eprintln!("Running backtest...");
     let result = run(
@@ -93,13 +113,18 @@ async fn main() -> Result<()> {
         args.check_interval,
         args.cooldown,
         candle_minutes,
+        &ob_data,
     );
 
-    let start_dt = DateTime::from_timestamp_millis(start_ms as i64).unwrap();
+    let start_dt = DateTime::<Utc>::from_timestamp_millis(start_ms as i64).unwrap();
     print!(
         "{}",
         format_report(&args.coin, start_dt, now, args.av, &result.trades, result.final_equity, result.max_drawdown_pct)
     );
+
+    if let Some(csv_dir) = &args.csv_dir {
+        export_pnl_csvs(&args.coin, &result.trades, csv_dir)?;
+    }
 
     Ok(())
 }
@@ -332,4 +357,143 @@ fn format_report(
     }
 
     out
+}
+
+fn load_candles_csv(path: &str) -> Result<Vec<data::Candle>> {
+    let mut rdr = csv::Reader::from_path(path).context("open candle CSV")?;
+    let mut candles = Vec::new();
+    for result in rdr.records() {
+        let row = result.context("read candle row")?;
+        let ts: u64 = row.get(0).and_then(|v| v.parse().ok()).unwrap_or(0);
+        let o: f64 = row.get(1).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        let h: f64 = row.get(2).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        let l: f64 = row.get(3).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        let c: f64 = row.get(4).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        let v: f64 = row.get(5).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        if ts > 0 {
+            candles.push(data::Candle {
+                t: ts,
+                t_close: ts + 15 * 60_000,
+                o, h, l, c, v, n: 0,
+            });
+        }
+    }
+    candles.sort_by_key(|c| c.t);
+    eprintln!("  Loaded {} candles from CSV", candles.len());
+    Ok(candles)
+}
+
+fn export_pnl_csvs(coin: &str, trades: &[TradeRecord], dir: &str) -> Result<()> {
+    use std::collections::BTreeMap;
+    std::fs::create_dir_all(dir).context("create csv dir")?;
+    let coin_lower = coin.to_lowercase();
+
+    // Aggregate trades into daily, weekly, monthly buckets.
+    let mut daily: BTreeMap<String, (usize, usize, f64)> = BTreeMap::new();
+    let mut weekly: BTreeMap<String, (usize, usize, f64)> = BTreeMap::new();
+    let mut monthly: BTreeMap<String, (usize, usize, f64)> = BTreeMap::new();
+
+    for t in trades {
+        let dt = DateTime::<Utc>::from_timestamp_millis(t.entry_time as i64).unwrap();
+        let win = if t.pnl_usd > 0.0 { 1usize } else { 0 };
+
+        // Daily: YYYY-MM-DD
+        let day_key = dt.format("%Y-%m-%d").to_string();
+        let d = daily.entry(day_key).or_insert((0, 0, 0.0));
+        d.0 += 1;
+        d.1 += win;
+        d.2 += t.pnl_usd;
+
+        // Weekly: ISO week YYYY-Www
+        let week_key = dt.format("%G-W%V").to_string();
+        let w = weekly.entry(week_key).or_insert((0, 0, 0.0));
+        w.0 += 1;
+        w.1 += win;
+        w.2 += t.pnl_usd;
+
+        // Monthly: YYYY-MM
+        let month_key = dt.format("%Y-%m").to_string();
+        let m = monthly.entry(month_key).or_insert((0, 0, 0.0));
+        m.0 += 1;
+        m.1 += win;
+        m.2 += t.pnl_usd;
+    }
+
+    // Write daily CSV.
+    let daily_path = format!("{}/{}_daily_pnl.csv", dir, coin_lower);
+    let mut wtr = csv::Writer::from_path(&daily_path).context("create daily csv")?;
+    wtr.write_record(["date", "trades", "wins", "win_pct", "pnl_usd", "cum_pnl_usd"])?;
+    let mut cum = 0.0f64;
+    for (date, (count, wins, pnl)) in &daily {
+        cum += pnl;
+        let wr = if *count > 0 { *wins as f64 / *count as f64 * 100.0 } else { 0.0 };
+        wtr.write_record(&[
+            date.clone(),
+            count.to_string(),
+            wins.to_string(),
+            format!("{:.1}", wr),
+            format!("{:.2}", pnl),
+            format!("{:.2}", cum),
+        ])?;
+    }
+    wtr.flush()?;
+
+    // Write weekly CSV.
+    let weekly_path = format!("{}/{}_weekly_pnl.csv", dir, coin_lower);
+    let mut wtr = csv::Writer::from_path(&weekly_path).context("create weekly csv")?;
+    wtr.write_record(["week", "trades", "wins", "win_pct", "pnl_usd", "cum_pnl_usd"])?;
+    cum = 0.0;
+    for (week, (count, wins, pnl)) in &weekly {
+        cum += pnl;
+        let wr = if *count > 0 { *wins as f64 / *count as f64 * 100.0 } else { 0.0 };
+        wtr.write_record(&[
+            week.clone(),
+            count.to_string(),
+            wins.to_string(),
+            format!("{:.1}", wr),
+            format!("{:.2}", pnl),
+            format!("{:.2}", cum),
+        ])?;
+    }
+    wtr.flush()?;
+
+    // Write monthly CSV.
+    let monthly_path = format!("{}/{}_monthly_pnl.csv", dir, coin_lower);
+    let mut wtr = csv::Writer::from_path(&monthly_path).context("create monthly csv")?;
+    wtr.write_record(["month", "trades", "wins", "win_pct", "pnl_usd", "cum_pnl_usd"])?;
+    cum = 0.0;
+    for (month, (count, wins, pnl)) in &monthly {
+        cum += pnl;
+        let wr = if *count > 0 { *wins as f64 / *count as f64 * 100.0 } else { 0.0 };
+        wtr.write_record(&[
+            month.clone(),
+            count.to_string(),
+            wins.to_string(),
+            format!("{:.1}", wr),
+            format!("{:.2}", pnl),
+            format!("{:.2}", cum),
+        ])?;
+    }
+    wtr.flush()?;
+
+    eprintln!("Exported: {}, {}, {}", daily_path, weekly_path, monthly_path);
+    Ok(())
+}
+
+fn load_ob_csv(path: &str) -> Vec<ObRecord> {
+    let Ok(mut rdr) = csv::Reader::from_path(path) else {
+        return Vec::new();
+    };
+    let mut records = Vec::new();
+    for result in rdr.records() {
+        let Ok(row) = result else { continue };
+        let ts: u64 = row.get(0).and_then(|v| v.parse().ok()).unwrap_or(0);
+        let imb: f64 = row.get(1).and_then(|v| v.parse().ok()).unwrap_or(1.0);
+        let spread: f64 = row.get(2).and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        if ts > 0 {
+            records.push(ObRecord { timestamp_ms: ts, ob_imbalance: imb, spread_pct: spread });
+        }
+    }
+    records.sort_by_key(|r| r.timestamp_ms);
+    records
 }

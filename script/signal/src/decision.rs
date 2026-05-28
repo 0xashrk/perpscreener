@@ -1,3 +1,4 @@
+use crate::daily_ctx::{DailyContext, VolumeContext};
 use crate::indicators::BollingerBands;
 use crate::macro_ctx::MacroContext;
 use crate::micro_ctx::MicroContext;
@@ -101,6 +102,8 @@ pub fn decide(
     rsi: Option<f64>,
     av: f64,
     asset_max_leverage: u32,
+    daily: Option<&DailyContext>,
+    vol_ctx: Option<&VolumeContext>,
 ) -> TradeDecision {
     let flat = || TradeDecision {
         signal: Signal::Flat,
@@ -116,8 +119,71 @@ pub fn decide(
         reason: String::new(),
     };
 
+    // Daily structure gate: block longs near resistance on declining volume.
+    if let Some(d) = daily {
+        if let Some(v) = vol_ctx {
+            // Near 20-day high + declining volume → skip longs.
+            if d.near_resistance && v.vol_declining {
+                let mut r = flat();
+                r.reason = format!(
+                    "near 20d high ({:.2}%) + declining volume (ratio {:.2}) — no longs",
+                    d.pct_from_high * 100.0, v.vol_ratio
+                );
+                return r;
+            }
+            // Near 20-day low + declining volume → skip shorts.
+            if d.near_support && v.vol_declining {
+                let mut r = flat();
+                r.reason = format!(
+                    "near 20d low ({:.2}%) + declining volume (ratio {:.2}) — no shorts",
+                    d.pct_from_low * 100.0, v.vol_ratio
+                );
+                return r;
+            }
+        }
+        // Near resistance without volume confirmation → downgrade longs (only allow STRONG).
+        if d.near_resistance && regime == Regime::Trending {
+            let vol_confirms = vol_ctx.map(|v| v.vol_confirms).unwrap_or(false);
+            if !vol_confirms {
+                // Still allow the trade but will be handled in trend_follow
+                // by passing the daily context through.
+            }
+        }
+    }
+
     match regime {
-        Regime::Trending => trend_follow(mac, mic, vwap, av, asset_max_leverage, flat),
+        Regime::Trending => {
+            let d = trend_follow(mac, mic, vwap, av, asset_max_leverage, &flat);
+            // Downgrade near resistance without volume.
+            if let (Some(dc), Signal::Long) = (daily, d.signal) {
+                if dc.near_resistance {
+                    let vol_confirms = vol_ctx.map(|v| v.vol_confirms).unwrap_or(false);
+                    if !vol_confirms && d.conviction != Conviction::Strong {
+                        let mut r = flat();
+                        r.reason = format!(
+                            "near 20d high ({:+.1}%) — need STRONG + volume to go long",
+                            dc.pct_from_high * 100.0
+                        );
+                        return r;
+                    }
+                }
+            }
+            // Downgrade near support without volume for shorts.
+            if let (Some(dc), Signal::Short) = (daily, d.signal) {
+                if dc.near_support {
+                    let vol_confirms = vol_ctx.map(|v| v.vol_confirms).unwrap_or(false);
+                    if !vol_confirms && d.conviction != Conviction::Strong {
+                        let mut r = flat();
+                        r.reason = format!(
+                            "near 20d low ({:+.1}%) — need STRONG + volume to go short",
+                            dc.pct_from_low * 100.0
+                        );
+                        return r;
+                    }
+                }
+            }
+            d
+        }
         Regime::Ranging => mean_revert(mic, vwap, bb, rsi, mac, av, asset_max_leverage, flat),
         Regime::Choppy => {
             let mut d = flat();
@@ -133,7 +199,7 @@ fn trend_follow(
     vwap: &VwapContext,
     av: f64,
     asset_max_lev: u32,
-    flat: impl Fn() -> TradeDecision,
+    flat: &impl Fn() -> TradeDecision,
 ) -> TradeDecision {
     // Gate: spread.
     if mac.spread_pct > 0.001 {

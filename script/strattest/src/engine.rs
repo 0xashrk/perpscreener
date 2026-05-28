@@ -44,6 +44,8 @@ struct Position {
     low_water: f64,
     vwap_cross_count: u32,
     initial_regime: String,
+    funding_paid: f64,
+    last_funding_hour: u64,
 }
 
 pub struct TradeRecord {
@@ -67,6 +69,26 @@ pub struct BacktestResult {
 
 // -- Engine ------------------------------------------------------------------
 
+/// OB snapshot loaded from CSV.
+pub struct ObRecord {
+    pub timestamp_ms: u64,
+    pub ob_imbalance: f64,
+    pub spread_pct: f64,
+}
+
+/// Look up the nearest OB record at or before `ts`.
+fn lookup_ob(ob_data: &[ObRecord], ts: u64) -> Option<(f64, f64)> {
+    let idx = ob_data.partition_point(|r| r.timestamp_ms <= ts);
+    if idx == 0 { return None; }
+    let r = &ob_data[idx - 1];
+    // Only use if within 30 minutes.
+    if ts - r.timestamp_ms < 30 * 60_000 {
+        Some((r.ob_imbalance, r.spread_pct))
+    } else {
+        None
+    }
+}
+
 pub fn run(
     candles_micro: &[Candle],
     candles_1h: &[Candle],
@@ -75,6 +97,7 @@ pub fn run(
     check_interval_min: u64,
     cooldown_min: u64,
     candle_minutes: u64,
+    ob_data: &[ObRecord],
 ) -> BacktestResult {
     let mut equity = initial_av;
     let mut peak = initial_av;
@@ -89,11 +112,15 @@ pub fn run(
         let day_ms = ts - (ts % 86_400_000); // midnight UTC
         let minute_of_day = (ts - day_ms) / 60_000;
 
-        // --- TP/SL + trailing stop check every candle ---
+        // --- TP/SL + trailing stop + funding check every candle ---
         if let Some(ref mut pos) = position {
             // Update high/low water marks.
             pos.high_water = pos.high_water.max(candle.h);
             pos.low_water = pos.low_water.min(candle.l);
+
+            // Track funding if we crossed an hourly boundary.
+            // Cost is accumulated in pos.funding_paid and deducted in compute_pnl.
+            charge_funding(pos, ts, candle.c);
 
             // Update trailing stop for trend-follow.
             if pos.strategy == Strategy::TrendFollow {
@@ -101,7 +128,7 @@ pub fn run(
             }
 
             if let Some((exit_price, reason)) = check_exits(pos, candle) {
-                let pnl = compute_pnl(pos, exit_price);
+                let pnl = compute_pnl(pos, exit_price, reason);
                 equity += pnl;
                 trades.push(make_record(pos, exit_price, ts, pnl, reason));
                 last_exit_ts = ts;
@@ -149,7 +176,7 @@ pub fn run(
                     pos.vwap_cross_count = 0;
                 }
                 if pos.vwap_cross_count >= 2 {
-                    let pnl = compute_pnl(pos, price);
+                    let pnl = compute_pnl(pos, price, ExitReason::VwapCross);
                     equity += pnl;
                     trades.push(make_record(pos, price, ts, pnl, ExitReason::VwapCross));
                     last_exit_ts = ts;
@@ -165,7 +192,7 @@ pub fn run(
                         } else {
                             ExitReason::AgreementFlip
                         };
-                        let pnl = compute_pnl(pos, price);
+                        let pnl = compute_pnl(pos, price, reason);
                         equity += pnl;
                         trades.push(make_record(pos, price, ts, pnl, reason));
                         last_exit_ts = ts;
@@ -181,8 +208,13 @@ pub fn run(
 
                 if closed_4h.len() >= 50 && closed_1h.len() >= 20 {
                     let mac = compute_macro(closed_4h, closed_1h, price);
-                    // Use initial_av for sizing (no compounding).
-                    let setup = decide(&mac, &mic, &vwap, regime, bb.as_ref(), rsi, initial_av);
+                    // Look up OB data for this timestamp.
+                    let (ob_imb, ob_spread) = match lookup_ob(ob_data, ts) {
+                        Some((imb, sp)) => (Some(imb), Some(sp)),
+                        None => (None, None),
+                    };
+                    // Use current equity for sizing (compounding).
+                    let setup = decide(&mac, &mic, &vwap, regime, bb.as_ref(), rsi, equity, ob_imb, ob_spread);
                     if setup.signal != Signal::Flat {
                         position = Some(open_position(setup, ts, mic.trend_regime));
                     }
@@ -198,7 +230,7 @@ pub fn run(
     // Force-close remaining position.
     if let Some(ref pos) = position {
         if let Some(last) = candles_micro.last() {
-            let pnl = compute_pnl(pos, last.c);
+            let pnl = compute_pnl(pos, last.c, ExitReason::EndOfData);
             equity += pnl;
             trades.push(make_record(pos, last.c, last.t, pnl, ExitReason::EndOfData));
         }
@@ -288,15 +320,56 @@ fn should_exit_signal(pos: &Position, mic: &MicroCtx) -> bool {
     false
 }
 
-fn compute_pnl(pos: &Position, exit_price: f64) -> f64 {
-    match pos.signal {
+// HL fee schedule.
+const MAKER_FEE: f64 = 0.00035;  // 0.035% — limit orders (entry + TP exit)
+const TAKER_FEE: f64 = 0.001;    // 0.10%  — market orders (SL, trail, signal exits)
+const FUNDING_RATE: f64 = 0.0001; // 0.01%  — default hourly funding rate
+                                   // Longs pay when positive, shorts pay when negative.
+                                   // Conservative estimate; actual rate varies.
+
+/// Charge funding when position crosses an hourly boundary.
+/// Returns the funding cost (positive = cost to position holder).
+fn charge_funding(pos: &mut Position, current_ts: u64, current_price: f64) -> f64 {
+    let current_hour = current_ts - (current_ts % 3_600_000);
+    if current_hour <= pos.last_funding_hour {
+        return 0.0;
+    }
+    // Count how many hourly settlements we crossed.
+    let hours_crossed = (current_hour - pos.last_funding_hour) / 3_600_000;
+    pos.last_funding_hour = current_hour;
+
+    let notional = current_price * pos.size_asset;
+    // Longs pay positive funding, shorts receive it (and vice versa).
+    // Using a fixed conservative rate as we don't have historical funding per candle.
+    let cost_per_hour = match pos.signal {
+        Signal::Long => notional * FUNDING_RATE,   // longs pay when rate > 0
+        Signal::Short => -notional * FUNDING_RATE,  // shorts receive when rate > 0
+        Signal::Flat => 0.0,
+    };
+    let total = cost_per_hour * hours_crossed as f64;
+    pos.funding_paid += total;
+    total
+}
+
+fn compute_pnl(pos: &Position, exit_price: f64, exit_reason: ExitReason) -> f64 {
+    let raw = match pos.signal {
         Signal::Long => (exit_price - pos.entry) * pos.size_asset,
         Signal::Short => (pos.entry - exit_price) * pos.size_asset,
         Signal::Flat => 0.0,
-    }
+    };
+    // Entry is always maker (limit order). Exit depends on reason.
+    let entry_fee = pos.entry * pos.size_asset * MAKER_FEE;
+    let exit_fee_rate = match exit_reason {
+        ExitReason::TpHit => MAKER_FEE, // TP can be limit
+        _ => TAKER_FEE,                  // SL, trail, signal exits are market
+    };
+    let exit_fee = exit_price * pos.size_asset * exit_fee_rate;
+    // Funding already deducted from equity during hold; include in P&L record.
+    raw - entry_fee - exit_fee - pos.funding_paid
 }
 
 fn open_position(setup: TradeSetup, ts: u64, regime: &str) -> Position {
+    let hour_ms = ts - (ts % 3_600_000);
     Position {
         signal: setup.signal,
         conviction: setup.conviction,
@@ -307,6 +380,8 @@ fn open_position(setup: TradeSetup, ts: u64, regime: &str) -> Position {
         trail_stop: 0.0,
         size_asset: setup.size_asset,
         entry_time: ts,
+        funding_paid: 0.0,
+        last_funding_hour: hour_ms,
         high_water: setup.entry,
         low_water: setup.entry,
         vwap_cross_count: 0,

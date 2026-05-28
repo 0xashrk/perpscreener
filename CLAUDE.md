@@ -32,7 +32,13 @@ src/
   errors/          # AppError and error payloads
 frontend/          # React + TypeScript frontend (separate app)
 script/            # standalone Rust CLI tools
-  backtest/        # backtest tool for trading recipes
+  signal/          # V2 trade signal scanner (VWAP, regime, daily structure)
+  momentum/        # intrahour momentum scanner
+  monitor/         # position monitor (exit signal watcher)
+  strattest/       # strategy backtester
+  obdata/          # historical orderbook data pipeline (Tardis.dev)
+  backtest/        # legacy backtest data feeder
+  scalper/         # scalper paper trading CLI
 ```
 
 Folder docs:
@@ -48,6 +54,7 @@ Folder docs:
 
 - Always add tests for new or changed behavior.
 - Keep code modularized: isolate features, keep layers clean, avoid large mixed-responsibility files.
+- **Zero Rust warnings.** Fix all compiler warnings before considering a task done. Use `#[allow(dead_code)]` on structs with fields kept for completeness, but never leave unused imports, unused variables, or unused mut warnings.
 
 ## Development
 
@@ -60,3 +67,7 @@ After adding or modifying backend endpoints, update the OpenAPI JSON files. See 
 ## Scripts
 
 Standalone CLI tools live in `script/`. See `guidelines/scripts_guidelines.md`.
+
+## Backtesting
+
+See `guidelines/backtest_guidelines.md` for data sources, fee model, and how to run backtests.

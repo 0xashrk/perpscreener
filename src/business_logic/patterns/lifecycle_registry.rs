@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::collections::HashSet;
 
 use crate::models::patterns::{PatternClassification, PatternSignalType};

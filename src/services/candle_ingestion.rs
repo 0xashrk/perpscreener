@@ -16,6 +16,7 @@ use crate::services::hyperliquid::HyperliquidClient;
 const CONCURRENT_REQUESTS: usize = 8;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct CandleIngestionConfig {
     pub coins: Vec<String>,
     pub intervals: Vec<CandleInterval>,
@@ -77,6 +78,7 @@ impl CandleIngestionService {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn warmup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let request_delay = self.config.request_delay;
         let tasks = self.config.coins.iter().cloned().flat_map(|coin| {
@@ -149,6 +151,7 @@ impl CandleIngestionService {
         }
     }
 
+    #[allow(dead_code)]
     async fn warmup_key(
         &self,
         coin: &str,

@@ -142,6 +142,7 @@ impl HyperliquidClient {
     }
 
     /// Fetch historical candles for warmup (last N minutes of 1m candles).
+    #[allow(dead_code)]
     pub async fn fetch_warmup_candles(
         &self,
         coin: &str,

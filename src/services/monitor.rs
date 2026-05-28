@@ -12,6 +12,7 @@ use crate::services::pattern_state::SharedPatternState;
 const INTERVAL_MS: u64 = 60_000; // 1 minute
 
 /// Monitoring service that runs double top detection for multiple coins
+#[allow(dead_code)]
 pub struct MonitorService {
     client: Arc<HyperliquidClient>,
     detectors: HashMap<String, DoubleTopDetector>,
@@ -43,6 +44,7 @@ impl MonitorService {
     }
 
     /// Initialize detectors with historical data
+    #[allow(dead_code)]
     pub async fn warmup(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let coins: Vec<String> = self.detectors.keys().cloned().collect();
 

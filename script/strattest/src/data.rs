@@ -1,14 +1,11 @@
-use std::sync::Arc;
-
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Semaphore;
-use tokio::task::JoinSet;
 
 const HL_API: &str = "https://api.hyperliquid.xyz/info";
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Candle {
     pub t: u64,
     #[serde(rename = "T")]
